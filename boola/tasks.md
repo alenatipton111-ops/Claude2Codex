@@ -33,6 +33,44 @@
 
 - [ ] [claude→codex] **T12: Acceptance check** — verify each acceptance criterion from `claude-notes.md` § Acceptance criteria. Note any that fail in `codex-notes.md` so Claude can address in the next planning round.
 
+---
+
+## Phase 1.5 — Lead source overhaul + setup wizard
+_(Added 2026-04-29 — drop license-based signals, add action-based fetchers, add first-run setup wizard.)_
+
+- [ ] [claude→codex] **T13: Add `targetSignals` to `CUSTOMER_PROFILE`** per `claude-notes.md` § Customer Profile schema. Default = all 8 signals enabled. No UI yet — that comes in T18.
+
+- [ ] [claude→codex] **T14: Remove license-based fetchers.** Delete (or comment out with `// REMOVED 2026-04-29: license-based, replaced by action-based fetchers`) the IPC handlers `fetch-openings`, `fetch-warehouse`, and the DCWP-inactive-license branch of `fetch-closings` in `main.js`. Keep `parseWARN` and the WARN branch. Remove `mapOpening` from `prospect.html` and the DCWP branch of `mapClosing`.
+
+- [ ] [claude→codex] **T15: Add action-based fetchers in `main.js`.** One IPC handler per signal, each calling NYC OpenData (Socrata) endpoints listed in `claude-notes.md` § Lead source overhaul. Each returns the standard `{ name, address, borough, industry, source, date }` shape. Handlers must be **gated by `CUSTOMER_PROFILE.targetSignals`** — only enabled signals trigger their fetcher. Test each endpoint with curl before wiring (some Socrata datasets gate or rate-limit anonymous access — note any that need an app token).
+  - `fetch-construction-permits` → DOB ipu4-2q9a, NB/DM
+  - `fetch-renovation-permits` → DOB ipu4-2q9a, A1/A2
+  - `fetch-job-filings` → DOB ic3t-wcy2 (covers move-in/move-out signal)
+  - `fetch-illegal-dumping` → 311 erm2-nwe9, complaint_type='Illegal Dumping'
+
+- [ ] [claude→codex] **T16: Wire fetchers into the lead pipeline** in `prospect.html`. Replace the old `fetchOpenings`/`fetchClosings`/`fetchWarehouse` calls with the new fetchers, again gated by `CUSTOMER_PROFILE.targetSignals`. Each fetched lead still goes through `validate-news-lead` (T5) — same name+phone+address gate applies regardless of source. Update the source label so the UI can show "🏗️ Construction permit" / "🚮 Illegal dumping" / "📋 WARN closure" / "📰 News" instead of "Opening" / "Closing".
+
+- [ ] [claude→codex] **T17: Update `OPPORTUNITY_SIGNALS` and `LEAD_KEYWORDS`** in `prospect.html` to remove license/permit-issuance noise and tighten focus on the 8 `targetSignals`. Specifically remove anything referencing "licensed" as a positive signal. Keep the existing renovation/construction/closing entries.
+
+- [ ] [claude→codex] **T18: Build first-run setup wizard.**
+  - Add `setup.html` (new file) — single-page form with the 6 fields listed in `claude-notes.md` § First-run setup wizard.
+  - Add `createSetupWindow()` in `main.js`, opens at app start when `profile.json` doesn't exist at `app.getPath('userData')/profile.json`. Mascot/chat windows do **not** load until profile is saved.
+  - Add IPC handlers `profile-load`, `profile-save`, `profile-exists`.
+  - On save, write profile.json, close setup window, then call the normal app-start sequence (createMascotWindow, createChatWindow, etc.).
+  - Add a "⚙️ Settings" button in the chat-pane sidebar that reopens setup to edit.
+  - **Bootstrap default:** if no profile.json, the wizard pre-fills with the existing hardcoded values (Alena's profile) so she doesn't have to re-enter on first run after the upgrade.
+
+- [ ] [claude→codex] **T19: Smoke test the new pipeline.**
+  1. Delete `app.getPath('userData')/profile.json` if present
+  2. Relaunch boola — confirm setup wizard appears
+  3. Save with defaults — confirm profile.json is written and main app launches
+  4. Open Leads tab → tap ↻ — confirm leads come from action-based sources (no "newly licensed" reasons appear)
+  5. Confirm at least one lead from each enabled signal type appears in `~/.boola_todays_leads.json` (or note in codex-notes if any signal yields zero on the test day)
+  6. Open Settings → uncheck `illegal-dumping` → save → tap ↻ — confirm no dumping leads appear
+  7. Record findings in `codex-notes.md`
+
+- [ ] [claude→codex] **T20: Sync to project folder** — `~/Desktop/boola-new/` → `~/Projects/boola/` for all edited/added files.
+
 ## Completed
 
 _(none yet)_

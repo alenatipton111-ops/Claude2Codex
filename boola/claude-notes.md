@@ -25,6 +25,12 @@ _Architecture, plans, specs, edge cases. Codex reads this; Codex does not edit i
 
 ---
 
+## Runtime independence guardrail
+
+Boola the shipped product is **plain Node + Chromium** (Electron). It must never depend at runtime on Codex, Claude CLI, ai-notes, MCP, or any AI-developer tooling. The ai-notes ↔ Codex workflow exists only for *building* boola; nothing it produces should be required to *run* boola. When tempted to add a feature that calls Codex, the Claude CLI, or anything in `~/ai-notes/`, stop — that's a personal-use hack and violates the SaaS rule.
+
+Allowed runtime AI: the customer's own Anthropic API key (already the pattern), and any future explicit integrations the customer authenticates themselves.
+
 ## Active plan — Lead Generation Overhaul (Phase 1 of 2)
 
 **Goal (Phase 1, this session):** Daily leads must be validated to have business name + valid phone + address before counting. Expand news sources from 4 to 15. Fall back to static pool only if news can't validate ≥3.
@@ -42,22 +48,36 @@ _Architecture, plans, specs, edge cases. Codex reads this; Codex does not edit i
 
 ### Architecture decisions
 
-1. **Customer Profile config block** — single object at top of `prospect.html` containing all per-customer settings:
+1. **Customer Profile config block** — single object loaded from `profile.json` at app startup. Schema:
    ```js
    const CUSTOMER_PROFILE = {
-     // SCALABILITY: Each field will move to a per-install profile.json under app.getPath('userData')
+     // Persisted to app.getPath('userData')/profile.json after first-run setup wizard.
      name: '1-800-GOT-JUNK NYC',
      service: 'junk removal',
      region: { code: 'nyc', label: 'New York City', state: 'NY' },
      newsFeeds: [...],          // 15 entries
-     geoMatch: NYC_GEO,         // existing regex
-     geoExclude: NON_NYC_GEO,   // existing regex
-     focusKeywords: /closing|shut(ting|down)|construction|demolition|renovation|expand|relocat/i,
+     geoMatch: NYC_GEO,         // regex
+     geoExclude: NON_NYC_GEO,   // regex
+     // Action-based signal types the customer cares about. Selected via
+     // checkbox in the first-run setup wizard. Each signal maps internally
+     // to a data fetcher (see § Lead source overhaul).
+     targetSignals: [
+       'move-in',            // new tenants, lease signings, business openings (legit move-ins)
+       'move-out',           // closings, vacate orders, tenant turnover
+       'construction',       // new builds, gut renovations
+       'renovation',         // alterations, retrofits
+       'illegal-dumping',    // 311 dumping complaints near service area
+       'furniture-changeover', // office moves, redesigns
+       'business-closing',   // WARN, restaurant shutters, retail bankruptcies
+       'damage-event'        // fire/flood/storm damage requiring cleanout
+     ],
      verticals: ['property manager','apartment complex','construction GC','restaurant','retail',
                  'medical office','law office','hotel','school','warehouse'] // for Phase 2
    }
    ```
-   All existing constants (`RSS_FEEDS`, `NYC_GEO`, `NON_NYC_GEO`) become references into `CUSTOMER_PROFILE`. Mark each migration with `// SCALABILITY:` comment.
+   `RSS_FEEDS`, `NYC_GEO`, `NON_NYC_GEO` become references into `CUSTOMER_PROFILE`. Mark each migration with `// SCALABILITY:` comment.
+
+   **Hardcoded defaults are bootstrap-only** — once first-run setup is built (see § First-run setup wizard), defaults are written to `profile.json` and the user edits from there.
 
 2. **15 NYC news sources** — pick best feeds for closing/construction signal. Codex should test each URL before committing; if any return 404 or paywall blocking RSS, substitute. Suggested set:
    - NY Post Business — `https://nypost.com/business/feed/` (existing)
@@ -114,6 +134,41 @@ _Architecture, plans, specs, edge cases. Codex reads this; Codex does not edit i
 - [ ] If feeds produce 0 validated leads, static fallback shows with a "no validated news" banner
 - [ ] No hardcoded `1-800-GOT-JUNK` or `NYC` strings in code outside `CUSTOMER_PROFILE`
 - [ ] All scalability violations marked with `// SCALABILITY:` comment
+
+### Lead source overhaul — kill license-based, switch to action-based
+
+**Drop these (they generate noise):**
+- `fetch-openings` IPC in `main.js` (NYC DCWP "newly licensed" — many false positives, unrelated to cleanout demand)
+- `fetch-closings` DCWP-inactive-license branch (keep WARN — that's signal, not license-based)
+- `fetch-warehouse` IPC (active warehouse licenses — same noise problem)
+- `mapOpening` and DCWP branch of `mapClosing` in `prospect.html` (and the "newly licensed / license went inactive" reason strings)
+
+**Add these signal-fetchers** (one per `targetSignals` entry the customer enables):
+
+| Signal | Data source | API endpoint |
+|---|---|---|
+| `construction` | NYC DOB Permit Issuance | `https://data.cityofnewyork.us/resource/ipu4-2q9a.json` filter `permit_type='NB'` (new building) or `'DM'` (demolition) last 14 days |
+| `renovation` | NYC DOB Permit Issuance | same dataset, `permit_type='A1'` or `'A2'` (alterations) last 14 days |
+| `move-in`/`move-out` | NYC DOB Job Application Filings | `https://data.cityofnewyork.us/resource/ic3t-wcy2.json` filter recent filings |
+| `illegal-dumping` | NYC 311 Service Requests | `https://data.cityofnewyork.us/resource/erm2-nwe9.json` filter `complaint_type='Illegal Dumping'` last 7 days |
+| `business-closing` | WARN (existing) + DOH closures | keep `parseWARN`. Add DOH restaurant closures dataset if available. |
+| `damage-event` | News only | already covered via OPPORTUNITY_SIGNALS regex on RSS items |
+| `furniture-changeover` | News only | covered by news; no public dataset for this directly |
+
+Each fetcher returns the standard `{ name, address, borough, industry, source, date }` shape so the existing rendering pipeline keeps working. Apply the same validation gate (`validate-news-lead`) to **every** lead regardless of source — must produce phone + address before counting.
+
+### First-run setup wizard
+
+A small Electron window that appears on first launch when no `profile.json` exists. Persists output to `app.getPath('userData')/profile.json`. Fields:
+
+1. **Company name** — text (e.g., "1-800-GOT-JUNK NYC")
+2. **Service or product offered** — text (e.g., "junk removal", "commercial cleaning"). Drives Phase 2 vertical derivation.
+3. **Region** — text + state dropdown (e.g., "New York City", state: NY). Determines news feeds, geo regex, public dataset endpoints.
+4. **Target signal types** — multi-checkbox, defaulting to all enabled. Each = one entry in `targetSignals`. Tooltip per checkbox explains what it captures.
+5. **Brand voice / tone notes** — optional textarea, threaded into chat system prompt.
+6. **Anthropic API key** — re-uses existing `~/.boola_key` flow but moves into wizard.
+
+After save: profile.json written, wizard closes, mascot launches normally. A "Settings" gear in chat reopens the wizard at any time to edit.
 
 ### Phase 2 (next session — not yet for Codex)
 
