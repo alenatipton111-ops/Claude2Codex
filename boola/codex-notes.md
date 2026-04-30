@@ -51,3 +51,24 @@ _(Codex fills this in after each task — newest at top)_
 
 ### Remaining
 - T10/T19 still need live UI click-through: setup save, Leads refresh timing, badge rendering, and targetSignals toggle verification.
+
+## 2026-04-30T19:07:47.444Z - Call Mode follow-up workflow
+
+### Implemented
+- Added name + email intake fields to Call Mode.
+- Added profile-backed follow-up email template and manual attachment document names to setup.html/profile defaults.
+- Updated Call Mode to analyze seller-side transcript for email follow-up cues versus callback cues.
+- Email cue: Boola asks through the follow-up popup before drafting, then previews the email and exposes Send only after preview.
+- Callback cue: Boola asks to add a high-priority task like "Name Business follow up call date/time" to the Tasks tab.
+- Drafted call follow-up emails use the rep template, call transcript, contact name/email, optional notes, and profile docs.
+- Added red attachment reminder block in the preview: ATTACH <DOC> DOC TO EMAIL AND DELETE THIS TEXT. The same reminder is inserted at the top of the Gmail body; no attachments are sent automatically.
+- Synced main.js, chat.html, setup.html, followup.html, and prospect.html to ~/Projects/boola/ and relaunched Boola.
+
+### Test output
+- node -c ~/Desktop/boola-new/main.js passed.
+- Extracted scripts from chat.html, setup.html, followup.html, and prospect.html compiled with vm.Script.
+- Relaunched Boola with the standing command; /tmp/boola.log had no crash output immediately after launch.
+
+### Manual smoke needed
+- In Call tab, enter name/email, start listening, say an email cue such as "I'll send you a follow-up email with our service offerings", stop listening, confirm the popup asks to draft, confirm preview has red attachment reminder, then click Send and verify Gmail compose opens to the entered email.
+- Repeat with a callback cue such as "I'll give you a call back tomorrow at 2 pm", stop listening, confirm Boola asks to add the callback task and that it appears in Tasks.
