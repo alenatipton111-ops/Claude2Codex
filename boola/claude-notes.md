@@ -170,6 +170,22 @@ A small Electron window that appears on first launch when no `profile.json` exis
 
 After save: profile.json written, wizard closes, mascot launches normally. A "Settings" gear in chat reopens the wizard at any time to edit.
 
+### Anthropic API key — never customer-facing
+
+**SaaS rule:** customers do not bring their own Anthropic key. The shipped product must include a boola-operated backend that brokers all Claude calls. Customers authenticate against the backend with a customer-issued token; the backend proxies to Anthropic with the operator's master key and meters usage for billing.
+
+**Current state (transitional):** boola calls Anthropic directly from `chat.html` via `fetch` using a key loaded from `~/.boola_key`. This is acceptable for development but must not surface in customer UI.
+
+**Immediate action (T21):** remove the "Anthropic API key" field from `setup.html`. Continue loading from `~/.boola_key` silently for dev use. Mark every direct `api.anthropic.com` call site with `// SCALABILITY: route through boola backend in production` so we have a punch list when the backend ships.
+
+**Later (separate phase, post-Phase-2):** build the backend service:
+- Endpoint: `POST https://api.boola.app/v1/chat` (or similar)
+- Auth: `Authorization: Bearer <customer_session_token>`
+- Boola Electron client stores only customer_id + session_token (no Anthropic key)
+- Backend proxies to Anthropic, logs usage per customer, enforces rate limits
+- Subscription billing handled at backend (Stripe etc.)
+- This unblocks: customer onboarding (no Anthropic account needed), unified billing, usage analytics, abuse protection
+
 ### Phase 2 (next session — not yet for Codex)
 
 - Vertical-research algorithm: derive verticals from `CUSTOMER_PROFILE.service` via one Claude API call/day → search "[vertical] [region]" → extract company names → validate via same IPC.

@@ -60,6 +60,13 @@ _(Added 2026-04-29 — drop license-based signals, add action-based fetchers, ad
   - Add a "⚙️ Settings" button in the chat-pane sidebar that reopens setup to edit.
   - **Bootstrap default:** if no profile.json, the wizard pre-fills with the existing hardcoded values (Alena's profile) so she doesn't have to re-enter on first run after the upgrade.
 
+- [ ] [claude→codex] **T21: Remove API key field from setup wizard** per `claude-notes.md` § Anthropic API key. Specifically:
+  1. Delete the "Anthropic API key" label, input, and any related form code from `setup.html`.
+  2. Drop `apiKey` from the saved `profile.json` schema (don't write it; ignore on read).
+  3. Continue loading the key from `~/.boola_key` silently in `chat.html` and anywhere else it's used. If `~/.boola_key` is missing, log to console and degrade gracefully (chat shows "Boola is offline — admin setup required" instead of asking the customer for a key).
+  4. Add `// SCALABILITY: route through boola backend in production` comment at every `fetch('https://api.anthropic.com/v1/...')` call site in `chat.html` and any other file.
+  5. Sync to `~/Projects/boola/`.
+
 - [ ] [claude→codex] **T19: Smoke test the new pipeline.**
   1. Delete `app.getPath('userData')/profile.json` if present
   2. Relaunch boola — confirm setup wizard appears
