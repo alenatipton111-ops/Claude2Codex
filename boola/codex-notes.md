@@ -72,3 +72,22 @@ _(Codex fills this in after each task — newest at top)_
 ### Manual smoke needed
 - In Call tab, enter name/email, start listening, say an email cue such as "I'll send you a follow-up email with our service offerings", stop listening, confirm the popup asks to draft, confirm preview has red attachment reminder, then click Send and verify Gmail compose opens to the entered email.
 - Repeat with a callback cue such as "I'll give you a call back tomorrow at 2 pm", stop listening, confirm Boola asks to add the callback task and that it appears in Tasks.
+
+## 2026-04-30T19:45:15.188Z - Embedded sales knowledge base
+
+### Implemented
+- Added main-process IPC handler sales-knowledge-load that reads bundled sales-knowledge.md from the app folder with a 24k character cap.
+- Added renderer-side SALES_KNOWLEDGE cache plus ensureSalesKnowledge() so first chat/email/call prompt waits for the knowledge file if it has not loaded yet.
+- Injected the validated sales knowledge base into buildSystemPrompt() for general sales chat and call coaching.
+- Injected the same knowledge base into getEmailExpertSystem() for email drafting.
+- Injected the knowledge base into call follow-up drafting so post-call emails use the validated frameworks, email rules, objection handling, CTAs, and vertical playbooks.
+- Synced main.js, chat.html, and sales-knowledge.md to ~/Projects/boola/ and relaunched Boola.
+
+### Test output
+- node -c ~/Desktop/boola-new/main.js passed.
+- Extracted scripts from chat.html, setup.html, followup.html, and prospect.html compiled with vm.Script.
+- Relaunched Boola with the standing command; /tmp/boola.log had no crash output immediately after launch.
+
+### Manual smoke needed
+- Ask Boola for a cold call opener, objection response, or voicemail script and confirm it cites/uses the sales-knowledge frameworks in behavior.
+- Generate a cold email and a post-call follow-up and confirm the output follows the markdown rules: concise, specific, one CTA, no em dashes, no sign-off.
