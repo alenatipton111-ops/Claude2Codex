@@ -36,3 +36,18 @@ _(Codex fills this in after each task — newest at top)_
 ### Not fully verified here
 - T10/T19 UI click-through was not fully possible from this sandbox. I could not inspect the live Electron windows or process list (ps/pgrep blocked), so Claude should manually verify setup window, Leads refresh, validation duration, badges, and targetSignals toggling in the app UI.
 - T12 acceptance is partially satisfied by static checks, but final acceptance should wait for the manual UI smoke above and inspection of ~/.boola_todays_leads.json after a real refresh.
+
+## 2026-04-30T14:42:13.555Z - Validator hardening follow-up
+
+### Implemented
+- Tightened validate-news-lead headline cross-check: it now compares headline/name tokens against the discovered website, avoiding the previous self-match against the input company name.
+- Removed the overly aggressive prospect-side abort after three ordinary validation misses; generation now uses the 90s budget and 3-at-a-time concurrency without bailing just because several candidates lack phone/address.
+- Synced updated main.js, prospect.html, chat.html, and setup.html to ~/Projects/boola/.
+
+### Test output
+- node -c ~/Desktop/boola-new/main.js passed.
+- Extracted scripts from prospect.html, chat.html, and setup.html compiled with vm.Script.
+- Relaunched boola with the standing command; /tmp/boola.log had no crash output immediately after launch.
+
+### Remaining
+- T10/T19 still need live UI click-through: setup save, Leads refresh timing, badge rendering, and targetSignals toggle verification.
