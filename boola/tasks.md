@@ -60,6 +60,36 @@ _(Added 2026-04-29 — drop license-based signals, add action-based fetchers, ad
   - Add a "⚙️ Settings" button in the chat-pane sidebar that reopens setup to edit.
   - **Bootstrap default:** if no profile.json, the wizard pre-fills with the existing hardcoded values (Alena's profile) so she doesn't have to re-enter on first run after the upgrade.
 
+- [ ] [claude→codex] **T23: Calm down the mascot — kill random animations + idle bouncing.**
+  Alena finds the constant float-bouncing distracting and the random "swim to a stage spot, do a silly face, swim back" too disruptive. Make boola stagnant by default. Keep timed task reminder + leads pop-ups (those are window pop-ins, not mascot motion — leave alone).
+
+  **Specific changes:**
+
+  1. **`main.js`** — disable the `startRandomExpressions()` auto-fire loop:
+     - Find `function startRandomExpressions()` (~line 260) and either delete the call site (`createMainWindows()` invokes it) or no-op the function body. Keep `doSillyMoment(expr)` as a function so it's still callable by the "🎭 Test Mood" button — just stop the timer.
+     - The `RANDOM_EXPRS` array, `swimTo()`, `getRandomStage()`, and `doSillyMoment()` themselves can stay (they're useful for the manual Test Mood button).
+
+  2. **`mascot.html`** — kill the idle bouncing:
+     - Find `@keyframes bob` (~line 374). Either delete it or make it a no-op (`0%,100%{transform:none}`).
+     - In every `set-expression` handler that sets `boola.style.animation = 'bob …'`, change to `boola.style.animation = 'none'`.
+     - The `swim` keyframe can stay — it's only used during transitions (manual Test Mood) and the leads-pop-up swim, which Alena wants kept.
+     - The `swimming` IPC handler (line 444) — when called with `false`, set animation to `'none'` instead of `'bob 2s ease-in-out infinite'`.
+
+  3. **Do NOT touch:**
+     - `fireReminder()` / `animateReminderIn` / `animateReminderOut` (todo pop-up — keep)
+     - `fireProspect()` (leads pop-up — keep)
+     - `prospect.html` (leads pop-up has its own swim animation — keep)
+     - The sparkles/money-throw effects on `celebrate` IPC events (those are intentional, user-triggered)
+
+  **Acceptance:**
+  - After relaunch, boola the whale sits perfectly still in the corner. No bouncing, no drift.
+  - 45-75 min later, no random "swim across screen" event fires.
+  - Tasks tab still pops the reminder window at scheduled times.
+  - Leads tab still pops at 9:30 AM.
+  - Clicking "🎭 Test Mood" in chat still triggers a one-off expression change (mascot face changes, no movement to a stage).
+
+  Sync to `~/Projects/boola/` when done.
+
 - [ ] [claude→codex] **T22: Mascot + brand identity redesign.**
   Read the design brief at **`~/Downloads/boola_mascot_redesign_brief_for_codex.md`** — that's the canonical visual spec. Then read `claude-notes.md` § Mascot redesign for boola-specific implementation requirements (existing expression system, animation hooks, wordmark application, dock icon, etc.).
   Files to touch:
