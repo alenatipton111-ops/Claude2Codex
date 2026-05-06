@@ -60,6 +60,21 @@ _(Added 2026-04-29 — drop license-based signals, add action-based fetchers, ad
   - Add a "⚙️ Settings" button in the chat-pane sidebar that reopens setup to edit.
   - **Bootstrap default:** if no profile.json, the wizard pre-fills with the existing hardcoded values (Alena's profile) so she doesn't have to re-enter on first run after the upgrade.
 
+- [ ] [claude→codex] **T22: Mascot + brand identity redesign.**
+  Read the design brief at **`~/Downloads/boola_mascot_redesign_brief_for_codex.md`** — that's the canonical visual spec. Then read `claude-notes.md` § Mascot redesign for boola-specific implementation requirements (existing expression system, animation hooks, wordmark application, dock icon, etc.).
+  Files to touch:
+  - `mascot.html` — replace existing SVG with new baby-shark design; preserve `swim` keyframe + `set-expression` IPC handler with expression variants (`happy`, `thinking`, `excited`, `headset`, `celebrate`, `sleepy` minimum).
+  - `prospect.html` — replace the "swimming whale holding scroll" SVG with new design; keep the swim animation.
+  - `setup.html`, `chat.html` — replace plain-text "Boola" headers with the wordmark + wave underline (use SVG/Pacifico/Lobster/Fredoka per brief).
+  - `main.js` — generate `icon.icns` (1024×1024 → iconutil) and apply via `app.dock.setIcon()` at startup. If iconutil generation needs to happen outside the app, document the build step in `codex-notes.md`.
+  Acceptance:
+  - Whale on screen matches the brief at first glance (baby shark, blush, big eyes, fin-not-arms, bubbles).
+  - All expression states still trigger from chat ("test mood" button cycles through them).
+  - Leads pop-up still shows the whale swimming up holding the scroll, in new style.
+  - Setup wizard shows the branded wordmark.
+  - macOS dock icon shows the new mark when boola is running.
+  Sync to `~/Projects/boola/` when done.
+
 - [ ] [claude→codex] **T21: Remove API key field from setup wizard** per `claude-notes.md` § Anthropic API key. Specifically:
   1. Delete the "Anthropic API key" label, input, and any related form code from `setup.html`.
   2. Drop `apiKey` from the saved `profile.json` schema (don't write it; ignore on read).

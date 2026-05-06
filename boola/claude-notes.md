@@ -186,6 +186,30 @@ After save: profile.json written, wizard closes, mascot launches normally. A "Se
 - Subscription billing handled at backend (Stripe etc.)
 - This unblocks: customer onboarding (no Anthropic account needed), unified billing, usage analytics, abuse protection
 
+### Mascot redesign
+
+Alena finalized a new Boola brand identity (cute blue baby shark, big glossy eyes, blush cheeks, navy script wordmark, blue wave underline). Full visual spec: **`~/Downloads/boola_mascot_redesign_brief_for_codex.md`** — Codex reads that file as the canonical design source.
+
+Implementation requirements specific to boola's existing code (extends the brief):
+
+1. **SVG, not raster.** Inline SVG in `mascot.html` and `prospect.html`. Keeps animations crisp at any DPI and no asset pipeline needed.
+
+2. **Preserve the existing expression system.** `mascot.html` listens for `set-expression` IPC events and switches between: `happy`, `thinking`, `excited`, `headset`, `celebrate`, `sleepy`, plus a few others. Codex should build expression variants by swapping eye/mouth/accessory layers within the new mascot, not rewriting it. Acceptable approach: structure the SVG with named groups (`#face-happy`, `#face-thinking`, etc.) that show/hide via class toggle.
+
+3. **Preserve animations.** Current mascot has a `swim` keyframe (rocks side-to-side); leads pop-up has the whale "swimming up" holding the scroll. Both need to keep working — just on the new artwork.
+
+4. **Wordmark application.** Use the navy "Boola" script + blue wave underline as the branded header in:
+   - `setup.html` (currently "Boola Setup" plain text)
+   - Leads pop-up header in `prospect.html`
+   - Chat window header in `chat.html`
+   - Any other place currently saying "Boola" in plain text
+
+5. **macOS dock icon.** Generate a 1024×1024 PNG from the new SVG, convert to `.icns` via `iconutil`, drop in project root as `icon.icns`, and reference via `app.dock.setIcon()` in `main.js` startup. (Path: research the current Electron dock-icon setup; may already use `productName` / no icon set.)
+
+6. **No customer-specific copy.** Wordmark, mascot, and underline are global brand — never gated by `CUSTOMER_PROFILE`. The customer's company name shows up in chat content, not in the mascot itself.
+
+7. **Color palette compliance.** Use the exact hex values from the brief — they're brand-locked now, not suggestions.
+
 ### Phase 2 (next session — not yet for Codex)
 
 - Vertical-research algorithm: derive verticals from `CUSTOMER_PROFILE.service` via one Claude API call/day → search "[vertical] [region]" → extract company names → validate via same IPC.
