@@ -91,3 +91,27 @@ _(Codex fills this in after each task — newest at top)_
 ### Manual smoke needed
 - Ask Boola for a cold call opener, objection response, or voicemail script and confirm it cites/uses the sales-knowledge frameworks in behavior.
 - Generate a cold email and a post-call follow-up and confirm the output follows the markdown rules: concise, specific, one CTA, no em dashes, no sign-off.
+
+## 2026-05-06T17:57:49Z - Mascot/icon-only update from approved shark reference
+
+### Implemented
+- Updated the floating mascot SVG in `mascot.html` to better match the approved Boola shark reference: shorter/chubbier body, small dorsal fin, compact curved tail, rounded side fins, large navy eyes, blush, open smile, friendly teeth, and red/pink tongue.
+- Kept the existing mascot IPC/expression hooks intact (`happy`, `thinking`, `excited`, `headset`, `celebrate`, `sleepy`, etc.) so call mode and chat mood changes still route through the same code.
+- Updated the small shark SVG used in the chat header and the swimming shark SVG in the Leads popup to use the same approved-shark proportions.
+- Reverted the earlier wordmark/header/layout work from this pass; this update is intentionally mascot/icon-only.
+- Regenerated `icon.icns` from the shark-only mascot and kept the existing `app.dock.setIcon()` hook in `main.js`.
+- Removed the temporary `boola-logo.svg` wordmark asset from both `~/Desktop/boola-new/` and `~/Projects/boola/`.
+- Synced `mascot.html`, `chat.html`, `prospect.html`, `setup.html`, `main.js`, and `icon.icns` to `~/Projects/boola/`.
+
+### Test output
+- Inline mascot SVG passed `xmllint`.
+- Leads popup swimmer SVG passed `xmllint`.
+- `node --check ~/Desktop/boola-new/main.js` passed.
+- Extracted scripts from `mascot.html`, `prospect.html`, `setup.html`, and `chat.html` compiled with `vm.Script`.
+- Rendered a local Quick Look preview of the updated mascot SVG for visual QA.
+- Regenerated `icon.icns` with `iconutil` outside the sandbox.
+- Relaunched Boola; `/tmp/boola.log` had no crash output immediately after launch.
+
+### Manual smoke needed
+- Confirm the floating on-screen mascot now matches the approved reference closely enough at app size.
+- Confirm the dock icon shows the shark-only mascot after relaunch.
