@@ -150,3 +150,26 @@ _(Codex fills this in after each task — newest at top)_
 ### Manual smoke needed
 - Confirm the standalone floating shark no longer appears on the desktop after relaunch.
 - Confirm Cmd+Shift+C still opens Call Mode and dock activation can bring back the chat window.
+
+## 2026-05-07T16:11:35Z - Approved Boola mascot emote system
+
+### Implemented
+- Extracted a new transparent `mascot-emotes/` asset set from the approved base mascot and approved emote sheet.
+- Added reusable mascot states for base, open-mouth, throwing-money, swimming, thinking, confused, cooking-money, email-reject, angry, waving, excited, and sleeping.
+- Mapped legacy expression names like `happy`, `money`, `sleepy`, `celebrate`, and `headset` to the approved new assets so existing app flows keep working.
+- Updated the dormant mascot window to swap approved emote PNGs through one reusable expression map instead of trying to redraw the character with SVG shapes.
+- Updated the visible chat header avatar so expression IPC events now show the new Boola emote states even though the floating mascot window is disabled.
+- Updated the Leads/prospect popup to use the approved swimming emote.
+- Updated the macOS dock icon source to use the approved base mascot asset.
+- Synced updated assets and files to `~/Projects/boola/`.
+
+### Test output
+- `node --check ~/Desktop/boola-new/main.js` passed.
+- Extracted scripts from `chat.html`, `mascot.html`, and `prospect.html` compiled with `vm.Script`.
+- Verified all 12 emote PNG assets exist in `~/Desktop/boola-new/mascot-emotes/`.
+- Relaunched Boola; `/tmp/boola.log` showed only the existing Chromium `kern.hv_vmm_present` warning and no app crash.
+
+### Manual smoke needed
+- Open chat and trigger Thinking/Email/Tasks flows to confirm the header Boola swaps to the matching approved emotes.
+- Confirm the prospect popup now shows the swimming Boola emote.
+- Note: the approved sheet labels #8 as Angry and #10 as Bored, while the task text requested Waving and Sleeping. I kept the sheet's Angry asset available, mapped Waving to the approved raised-fin happy pose, and mapped Sleeping/Sleepy/Bored to the approved sleepy/bored pose.
