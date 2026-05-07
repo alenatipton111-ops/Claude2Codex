@@ -60,6 +60,36 @@ _(Added 2026-04-29 — drop license-based signals, add action-based fetchers, ad
   - Add a "⚙️ Settings" button in the chat-pane sidebar that reopens setup to edit.
   - **Bootstrap default:** if no profile.json, the wizard pre-fills with the existing hardcoded values (Alena's profile) so she doesn't have to re-enter on first run after the upgrade.
 
+- [ ] [claude→codex] **T25: Restore the floating desktop mascot.**
+  T23's previous implementation went too far — it removed the mascot window entirely and shoved the whale into the chat header. That violates the new core rule (`claude-notes.md` § Mascot is the product). Bring back the floating mascot window with full original functionality, MINUS the idle bouncing and random swim moments.
+
+  **Restore:**
+  1. **`main.js`** — re-enable `createMascotWindow()` and add it back to `createMainWindows()`. Position bottom-right of primary display (existing code is correct: `x: width-160, y: height-160`).
+  2. Re-enable click-to-toggle-chat IPC handler (`toggle-chat` from mascot to main, then show/hide chatWindow).
+  3. Re-enable dragging (`move-mascot` IPC handler that sets mascot bounds).
+  4. Restore the chat-positioning-relative-to-mascot behavior (`chatWindow.setPosition(b.x - 290, b.y - 700)` where `b` is the mascot bounds) — that was the original anchor.
+  5. Mascot uses the new emote PNG system (`./mascot-emotes/base.png` as default) — keep what Codex built for expressions, just put it back in the floating window.
+
+  **Keep removed (what Alena actually asked to remove):**
+  - Idle bobbing animation (`@keyframes bob` and any `animation: bob …` defaults). Mascot sits perfectly still.
+  - Auto-firing `startRandomExpressions()` loop. No timer-driven silly moments. The function and `doSillyMoment()` can stay callable from the manual "🎭 Test Mood" button — just no scheduled fires.
+
+  **Keep working:**
+  - Manual `set-expression` IPC events still swap the avatar PNG (thinking/excited/headset/celebrate/sleepy/etc.)
+  - Sparkles/celebrate effects on user-triggered events (close button success, manual celebrate)
+  - Task reminder pop-up (9am/12pm/3pm) and 9:30am leads pop-up — both keep working untouched
+
+  **Acceptance:**
+  - After relaunch, the floating Boola whale appears in the bottom-right corner of the primary display
+  - Whale sits still — no bobbing, no drift
+  - Clicking the whale toggles the chat panel
+  - Dragging the whale moves it; chat re-positions relative to the new whale location when next opened
+  - 45+ min later, no auto-fired animations occur
+  - Test Mood button still triggers expressions
+  - Chat header avatar (added by Codex's last pass) can stay or be removed — Alena's call. Default: keep it; it's nice having the avatar visible inside the chat too.
+
+  Sync to `~/Projects/boola/` when done. Update `codex-notes.md` confirming the rule from `claude-notes.md` § Mascot is the product is now respected.
+
 - [ ] [claude→codex] **T23: Calm down the mascot — kill random animations + idle bouncing.**
   Alena finds the constant float-bouncing distracting and the random "swim to a stage spot, do a silly face, swim back" too disruptive. Make boola stagnant by default. Keep timed task reminder + leads pop-ups (those are window pop-ins, not mascot motion — leave alone).
 

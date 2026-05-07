@@ -25,6 +25,18 @@ _Architecture, plans, specs, edge cases. Codex reads this; Codex does not edit i
 
 ---
 
+## Mascot is the product — non-negotiable
+
+Boola IS the floating whale in the corner. The mascot is not optional, not a launcher, not a header avatar. It must be:
+- Always-on-top transparent frameless `BrowserWindow` in the bottom-right of the primary display by default
+- Visible at startup
+- Clickable to toggle the chat panel
+- Draggable (user moves it where they want; persist position across launches if practical)
+- **Static** — no idle bobbing, no auto-firing animations, no random "swim across screen" events
+- Expression swaps allowed (face changes triggered by user actions or system state: thinking, headset, excited, celebrate, sleepy)
+
+Any future change that proposes moving the mascot into the chat header / removing the floating window / replacing it with a tray icon is a **rule violation** unless Alena explicitly asks for it.
+
 ## Runtime independence guardrail
 
 Boola the shipped product is **plain Node + Chromium** (Electron). It must never depend at runtime on Codex, Claude CLI, ai-notes, MCP, or any AI-developer tooling. The ai-notes ↔ Codex workflow exists only for *building* boola; nothing it produces should be required to *run* boola. When tempted to add a feature that calls Codex, the Claude CLI, or anything in `~/ai-notes/`, stop — that's a personal-use hack and violates the SaaS rule.
