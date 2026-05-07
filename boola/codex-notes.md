@@ -115,3 +115,20 @@ _(Codex fills this in after each task — newest at top)_
 ### Manual smoke needed
 - Confirm the floating on-screen mascot now matches the approved reference closely enough at app size.
 - Confirm the dock icon shows the shark-only mascot after relaunch.
+
+## 2026-05-07T02:18:06Z - Approved shark asset correction
+
+### Implemented
+- Replaced the visible floating mascot with `boola-shark.png`, generated directly from the approved Boola reference image instead of continuing to hand-build the shark in SVG.
+- Kept the old SVG hidden only as a compatibility layer for existing expression/accessory DOM calls; the on-screen shark now comes from the approved asset.
+- Updated the Leads popup swimmer and chat header avatar to use the same approved shark PNG.
+- Added `boola-shark-icon.png` as a square icon source and changed `main.js` to set the macOS dock icon from the PNG via `nativeImage` instead of the `.icns` path Electron rejected.
+- Synced updated files/assets to `~/Projects/boola/`.
+
+### Test output
+- `node --check ~/Desktop/boola-new/main.js` passed.
+- Extracted scripts from `mascot.html`, `prospect.html`, and `chat.html` compiled with `vm.Script`.
+- Relaunched Boola after the PNG dock icon fix. `/tmp/boola.log` showed normal Chromium/camera warnings only; no dock icon load failure after the fix.
+
+### Manual smoke needed
+- Visually confirm the floating mascot no longer shows the bad multi-part SVG mouth and now matches the approved reference asset.
