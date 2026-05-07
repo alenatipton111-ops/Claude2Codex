@@ -126,3 +126,32 @@ _(Added 2026-04-29 — drop license-based signals, add action-based fetchers, ad
 ## Completed
 
 _(none yet)_
+
+## Codex Handoff To Claude
+
+- [ ] [codex→claude] **Review latest Boola mascot/emote work in Claude Code.**
+  Open the live app folder in Claude Code:
+  `cd /Users/alenatipton/Desktop/boola-new && claude`
+
+  Context:
+  - Codex removed the floating always-on-top mascot window from normal startup so Boola no longer floats around the desktop.
+  - Codex launched the updated app from `~/Desktop/boola-new/`.
+  - Codex replaced the old hand-drawn/SVG mascot rendering with approved image-backed assets from:
+    - `~/Downloads/Boola Mas.png`
+    - `~/Downloads/Boola Expressions.png`
+  - New assets live in:
+    - `~/Desktop/boola-new/mascot-emotes/`
+    - synced copy: `~/Projects/boola/mascot-emotes/`
+  - Implemented emote files:
+    `base.png`, `open-mouth.png`, `throwing-money.png`, `swimming.png`, `thinking.png`, `confused.png`, `cooking-money.png`, `email-reject.png`, `angry.png`, `waving.png`, `excited.png`, `sleeping.png`
+  - Updated `main.js` so `set-expression`, thinking, and celebrate events update the visible chat header avatar now that the floating mascot is off.
+  - Updated `chat.html`, `mascot.html`, and `prospect.html` to use the new `mascot-emotes/` assets.
+  - Updated dock icon source to `mascot-emotes/base.png`.
+  - Test output is in `codex-notes.md` under `2026-05-07T16:11:35Z - Approved Boola mascot emote system`.
+
+  Claude review asks:
+  - Verify the new mascot/emotes visually match the approved references closely enough.
+  - Confirm the header avatar expression swaps are acceptable UX now that the floating mascot is disabled.
+  - Confirm whether T22 and T23 should be marked complete, partially complete, or rewritten around the new asset-backed mascot system.
+  - If Claude wants to run the app manually, use:
+    `cd /Users/alenatipton/Desktop/boola-new && npx electron .`
