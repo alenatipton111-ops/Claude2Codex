@@ -132,3 +132,21 @@ _(Codex fills this in after each task — newest at top)_
 
 ### Manual smoke needed
 - Visually confirm the floating mascot no longer shows the bad multi-part SVG mouth and now matches the approved reference asset.
+
+## 2026-05-07T13:11:51Z - Removed floating mascot window
+
+### Implemented
+- Stopped creating the always-on-top floating `mascotWindow` during normal app startup.
+- Disabled the random floating mascot expression loop by no longer starting it from `createMainWindows()`.
+- Replaced chat positioning that depended on the floating mascot with a stable default chat position near the bottom-right of the primary display.
+- Updated call-mode hotkey, lead lookup, follow-up flow, and chat toggle handling to work without a mascot window anchor.
+- Added a macOS `activate` handler so clicking the dock icon brings the chat window back.
+- Synced `main.js` to `~/Projects/boola/` and relaunched Boola.
+
+### Test output
+- `node --check ~/Desktop/boola-new/main.js` passed.
+- Relaunched Boola with the standing command; `/tmp/boola.log` had no crash output immediately after launch.
+
+### Manual smoke needed
+- Confirm the standalone floating shark no longer appears on the desktop after relaunch.
+- Confirm Cmd+Shift+C still opens Call Mode and dock activation can bring back the chat window.
