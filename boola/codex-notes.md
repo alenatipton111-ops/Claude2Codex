@@ -173,3 +173,26 @@ _(Codex fills this in after each task — newest at top)_
 - Open chat and trigger Thinking/Email/Tasks flows to confirm the header Boola swaps to the matching approved emotes.
 - Confirm the prospect popup now shows the swimming Boola emote.
 - Note: the approved sheet labels #8 as Angry and #10 as Bored, while the task text requested Waving and Sleeping. I kept the sheet's Angry asset available, mapped Waving to the approved raised-fin happy pose, and mapped Sleeping/Sleepy/Bored to the approved sleepy/bored pose.
+
+## 2026-05-07T21:45:12Z - T25 restored floating desktop mascot
+
+### Implemented
+- Read `claude-notes.md` § Mascot is the product and implemented T25 only.
+- Restored `createMascotWindow()` to normal startup so Boola is again an always-on-top transparent frameless desktop mascot.
+- Restored click-to-toggle chat behavior through the existing `toggle-chat` IPC route.
+- Restored mascot dragging through `move-mascot`, including lightweight persistence to `app.getPath('userData')/mascot-position.json`.
+- Restored chat positioning relative to the mascot using the original anchor behavior: `chatWindow.setPosition(b.x - 290, b.y - 700)`.
+- Kept the new approved `mascot-emotes/` PNG system for the floating mascot.
+- Kept idle/random animation behavior disabled: `startRandomExpressions()` is a no-op, Test Mood swaps an expression without swimming to a random stage, and normal expression swaps set no animation.
+- Left task reminder, lead popup, sparkles, money effects, and the chat header avatar intact.
+- Synced `main.js` and `mascot.html` to `~/Projects/boola/`.
+
+### Test output
+- `node --check ~/Desktop/boola-new/main.js` passed.
+- Extracted scripts from `mascot.html`, `chat.html`, and `prospect.html` compiled with `vm.Script`.
+- Relaunched Boola from `~/Desktop/boola-new/`; `/tmp/boola.log` had no crash output immediately after launch.
+
+### Manual smoke needed
+- After relaunch, confirm floating Boola appears bottom-right, sits still, toggles chat on click, and can be dragged.
+- Confirm Test Mood changes the mascot expression without moving Boola across the screen.
+- Confirm no random mascot animation fires after 45+ minutes.
