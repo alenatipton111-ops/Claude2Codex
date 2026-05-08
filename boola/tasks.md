@@ -114,6 +114,25 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
 - [ ] [claude→codex] **T36: Sync to `~/Projects/boola/`** after T35 passes.
 
+- [ ] [claude→codex] **T37: Auto-task on email send.**
+  After `send-email` IPC succeeds, automatically:
+  1. Append entry to `~/Library/Application Support/boola/sent-emails.json`: `{to, subject, type, sentAt, leadId?, taskId?}`
+  2. Compute follow-up date based on email `type`:
+     - `cold` → +3 days
+     - `followup1` → +6 days
+     - `followup2` → +10 days
+     - `proposal` → +5 days
+     - `aftercall` → +2 days
+     - `social-proof` → +4 days
+     - `breakup` → +60 days
+     - `won` → no task
+  3. Auto-create a todo via the existing todo system with text `"Follow up with {recipient name or email} re: {subject}"`, priority `medium`, due-date set per the table.
+  4. Store the created `taskId` back on the sent-email ledger so we can cancel it later (Phase 3 with Gmail read).
+  5. Add a small toast/notification in chat: "📋 Auto-added follow-up task for {recipient} on {date}". Dismissable.
+  6. Add a "Sent emails" history view (small) reading from `sent-emails.json` — sortable by date, shows which ones still have open follow-up tasks. Place it in chat sidebar under "Tasks".
+  Files affected: `main.js` (ledger persistence in send-email handler), `chat.html` (auto-task creation, toast UI, sent-emails view).
+  Acceptance: send a test email, verify a new task appears in Tasks tab with correct due-date, verify entry appears in sent-emails.json, verify toast shows.
+
 ---
 
 - [ ] [claude→codex] **T25: Restore the floating desktop mascot.**
