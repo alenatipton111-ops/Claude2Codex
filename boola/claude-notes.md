@@ -222,8 +222,96 @@ Implementation requirements specific to boola's existing code (extends the brief
 
 7. **Color palette compliance.** Use the exact hex values from the brief — they're brand-locked now, not suggestions.
 
-### Phase 2 (next session — not yet for Codex)
+### Phase 2 — Workbook-driven lead generation (THIS IS THE ACTIVE PLAN)
 
-- Vertical-research algorithm: derive verticals from `CUSTOMER_PROFILE.service` via one Claude API call/day → search "[vertical] [region]" → extract company names → validate via same IPC.
-- Replace the Phase-1 static fallback with vertical research output.
-- Spec to be written when Phase 1 is verified working.
+**Bug confirmed (2026-05-08):** `~/.boola_todays_leads.json` shows the same 3 leads (Hudson Yards / Marriott Marquis Times Square / NYU Langone) every day. Root cause: news-validation gate (must produce phone+address+token-cross-check) is too strict, so news leads almost never qualify. The `// PHASE-1-TEMP:` static `fallbackPool` (3 hardcoded NYC anchors) then pads the list. That fallback was meant as a one-week safety net; it's been the only producer for weeks.
+
+**Fix is structural, not a tweak.** Alena delivered a master workbook (`lead-rules.xlsx`, copied to project root) with 8 tabs covering sales types, verticals by month, source routing, source scoring, cold-email rules, regional source rules. Boola's lead engine becomes a workbook-driven pipeline.
+
+#### Goal
+
+10 leads/day, generated fresh each morning, composed of:
+
+| Bucket | Count | Source |
+|---|---|---|
+| 1. **Regional news triggers** | up to 3 | RSS news + 311/DOB + WARN, validated to phone+address |
+| 2. **Targeted vertical companies** | fills to 7 | Workbook-driven: customer's `targetVerticals` × current month, searched via workbook source rules |
+| 3. **Seasonal toppers** | fills to 10 | Workbook `best_buy_months` matches current month — vertical entering peak buying window |
+
+If a bucket can't fill, fill from the next bucket — never duplicate, never repeat yesterday's leads. Persist a 14-day rolling exclusion list of recently-shown company names so even random/static fills don't repeat.
+
+#### Workbook integration
+
+- Ship `lead-rules.xlsx` in the project root (committed) and load at startup. Use `xlsx` npm package (small, no native build) or pre-bake the workbook into JSON at build time. **Recommendation: pre-bake to `lead-rules.json`** at install time so runtime has zero spreadsheet parsing cost. Include a build script `scripts/build-lead-rules.js` that reads the xlsx and emits the JSON.
+- Tabs to consume:
+  - `Master_B2B_Lead_Rules` → sales_type → vertical → priority_score, best_buy_months, outreach_start_months, search_template, buyer_titles
+  - `Source_Routing_Logic` → intent → primary/secondary sources mapping
+  - `Source_Scoring_Rules` → confidence-score formula
+  - `Sources` → URL directory for each source_key
+  - `Regional_Source_Rules` → tier/freshness/best_for per source
+  - `Cold_Email_Rules` → subject lines, openers, follow-ups, objection responses
+- Treat workbook as immutable runtime data; updates ship with new boola releases.
+
+#### Setup wizard additions (one-time per customer)
+
+Three new fields on `setup.html`, persisted to `profile.json`:
+
+1. **Sales type** — single-select dropdown sourced from workbook `Category_Summary.sales_type`. Drives vertical recommendations and source routing. Default for Alena: "Facilities / Commercial Services / Junk Removal".
+2. **Target verticals** — multi-select shown after sales type is picked, populated from workbook `Master_B2B_Lead_Rules` rows where `sales_type` matches. Default = all rows checked. Each vertical row exposes its `priority_score` so customer can see what's weighted heavy.
+3. **Territory radius** — text input, miles from region center. Used to scope source queries (e.g. "Manhattan + 25mi"). Default 25.
+
+#### Lead-gen pipeline (replaces current `prospect.html` flow)
+
+```
+1. Load profile.json → {salesType, targetVerticals, region, targetSignals, ...}
+2. Compute current month → derive in-season verticals via workbook best_buy_months
+3. Bucket 1 — News triggers (existing pipeline, unchanged in mechanism):
+   - RSS feeds + DOB permits + 311 dumping + WARN
+   - Validate via validate-news-lead (phone + address + token check)
+   - Cap at 3
+4. Bucket 2 — Targeted verticals (NEW):
+   - For each enabled targetVertical (sorted by priority_score):
+     - Generate search queries from workbook search_template field
+     - Run via existing searchCompanyWebsite + lookup-company-info
+     - Validate (name + phone required; address optional for vertical leads per spec)
+     - Stop when bucket reaches 7 - bucket1.length
+5. Bucket 3 — Seasonal toppers (NEW):
+   - Find verticals where currentMonth ∈ best_buy_months
+   - If different from already-pulled verticals, do one more pass to fill remaining slots
+6. Apply rolling exclusion: drop any name in last 14 days' leads file
+7. Confidence-score each lead via Source_Scoring_Rules
+8. Sort by confidence desc, take top 10
+9. Persist to .boola_todays_leads.json with full schema
+   {name, phone, address, website, vertical, source, sourceUrl,
+    confidence, whyNow, suggestedBuyer, buyingTrigger,
+    coldSubject, coldOpener, validatedAt}
+10. Also persist to .boola_lead_history.json (rolling 14 days, name+date)
+```
+
+#### Lead card UI changes (`chat.html`)
+
+Each lead card gains:
+- **Vertical** chip (small purple pill)
+- **Confidence score** (1-100, color-coded green/yellow/red)
+- **Why now** line (one-sentence trigger from buying-signal logic)
+- **Suggested buyer title** (from workbook buyer_titles)
+- **Source** chip (showing the workbook source_name)
+- Quick-action: "📧 Generate cold email" — fills the Email pane with workbook-rule-compliant subject + opener pre-populated
+
+#### What gets retired
+
+- `// PHASE-1-TEMP:` static `fallbackPool` — deleted, not commented out
+- Hardcoded 3-company anchor (Hudson Yards / Marriott Marquis / NYU Langone) — gone
+
+#### Acceptance
+
+- Run lead refresh on three consecutive days → cache shows 10 different leads each day, ≤ 1 carryover
+- All 10 leads have name + phone (address required only for bucket-1)
+- Each lead card shows vertical, confidence, why-now, suggested buyer
+- Setup wizard shows sales-type dropdown with 35 options from workbook
+- Setting `salesType = "Tech / SaaS / IT"` and re-running produces leads in healthcare/financial verticals (per workbook), not real estate
+
+### Phase 3 (after Phase 2 verified)
+
+- Cold email pane upgrade: when user has selected a lead, "Generate" pulls workbook subject_line_styles + opener_templates + objection_responses for that vertical. Currently `EMAIL_TYPE_GUIDE` is hardcoded; replace with workbook lookup.
+- Manager-tier upgrade: per-rep analytics dashboard reading lead-touch logs.

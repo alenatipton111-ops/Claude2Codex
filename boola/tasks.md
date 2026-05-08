@@ -60,6 +60,62 @@ _(Added 2026-04-29 — drop license-based signals, add action-based fetchers, ad
   - Add a "⚙️ Settings" button in the chat-pane sidebar that reopens setup to edit.
   - **Bootstrap default:** if no profile.json, the wizard pre-fills with the existing hardcoded values (Alena's profile) so she doesn't have to re-enter on first run after the upgrade.
 
+## Phase 2 — Workbook-driven lead generation
+_(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on `lead-rules.xlsx`. Spec in `claude-notes.md` § Phase 2.)_
+
+- [ ] [claude→codex] **T26: Build `scripts/build-lead-rules.js`.** Reads `~/Desktop/boola-new/lead-rules.xlsx`, emits `~/Desktop/boola-new/lead-rules.json` with all 8 tabs as keyed objects/arrays. Use the `xlsx` or `node-xlsx` npm package (or existing if already in deps). Run once and commit the resulting JSON. Add an `npm run build:lead-rules` script in `package.json`. Goal: zero xlsx parsing at runtime.
+
+- [ ] [claude→codex] **T27: Add sales-type + target-verticals to setup wizard.**
+  In `setup.html`:
+  1. Add **Sales type** single-select dropdown after Region. Options sourced from `lead-rules.json` → `Category_Summary` (35 options). Field: `profile.salesType` (string code like `facilities_commercial_services_junk_sales`).
+  2. Add **Target verticals** multi-checkbox section, populated dynamically from `lead-rules.json` → `Master_B2B_Lead_Rules` filtered by `sales_type`. All checked by default. Field: `profile.targetVerticals` (array of vertical strings).
+  3. Add **Territory radius** number input (miles). Default 25. Field: `profile.region.radiusMiles`.
+  4. Bootstrap defaults for Alena's existing profile: `salesType = "facilities_commercial_services_junk_sales"`, all matching verticals checked, radius 25.
+
+- [ ] [claude→codex] **T28: Delete the static `fallbackPool` from `prospect.html`.** Not comment out — fully delete. Remove all references and the `// PHASE-1-TEMP:` block. This will break lead generation until T29-T31 land — that's expected; do these tasks together.
+
+- [ ] [claude→codex] **T29: Implement Bucket 2 — vertical fetcher.**
+  In `main.js`: new IPC handler `fetch-vertical-leads({salesType, targetVerticals, region, currentMonth})`. For each enabled vertical (sorted by `priority_score` from workbook):
+  1. Build search queries from the workbook's search-template field for that row
+  2. Run through existing `searchCompanyWebsite` + `lookup-company-info`
+  3. Validate name + phone (address optional)
+  4. Tag each result with `{vertical, sourceKey, sourceUrl, priorityScore, suggestedBuyer (from buyer_titles)}`
+  5. Stop when target count is reached
+  Apply a per-call concurrency cap of 3, total budget 60s, return whatever validated by then.
+
+- [ ] [claude→codex] **T30: Implement Bucket 3 — seasonal toppers.**
+  In `main.js`: new IPC handler `fetch-seasonal-leads({salesType, region, currentMonth})`. Find rows in workbook where `currentMonth ∈ best_buy_months`. If different from already-pulled verticals, run vertical fetcher for those. Used to fill remaining slots after Bucket 1+2.
+
+- [ ] [claude→codex] **T31: Rewrite `generateProspects` in `prospect.html`** as the workbook-driven 3-bucket pipeline per `claude-notes.md` § Phase 2 lead-gen pipeline. Acceptance: 10 leads/day, no static fallbackPool, never repeats yesterday's leads (rolling 14-day exclusion).
+
+- [ ] [claude→codex] **T32: Rolling exclusion list.**
+  In `main.js`: maintain `~/Desktop/boola-new/.boola_lead_history.json` (or under `app.getPath('userData')`) with `[{name, date, source}]` entries for last 14 days. Drop entries older than 14 days on each write. `validate-news-lead` and the new vertical/seasonal fetchers must check this file and skip any name already on it. Persist new leads to it after generation.
+
+- [ ] [claude→codex] **T33: Lead card UI upgrade.**
+  In `chat.html` lead rendering: each card gains
+  - Vertical chip (purple pill)
+  - Confidence score (1-100, computed via workbook `Source_Scoring_Rules`, color: ≥85 green / 70-84 yellow / <70 red)
+  - "Why now" one-line (from buying-trigger logic)
+  - Suggested buyer title
+  - Source chip (workbook `source_name`)
+  - "📧 Cold email" quick-action button that pre-fills Email pane with subject+opener built from workbook `Cold_Email_Rules` + lead vertical
+  Lead schema expands accordingly; persisted in `.boola_todays_leads.json`.
+
+- [ ] [claude→codex] **T34: Confidence scoring helper.**
+  Add `computeConfidence(lead)` function consuming `Source_Scoring_Rules` from workbook JSON. Apply: base_score + recency_bonus + official_bonus + named_company_bonus + trigger_bonus, weighted by `verification_weight`. Store final score on each lead.
+
+- [ ] [claude→codex] **T35: Smoke test the new pipeline.**
+  1. Run boola for 3 consecutive days
+  2. Compare `.boola_todays_leads.json` across days — confirm 10 distinct leads/day with ≤1 carryover
+  3. Confirm each lead has name+phone, vertical, confidence, why-now, suggested buyer
+  4. Confirm setup wizard shows 35 sales types and dynamic target-verticals list
+  5. Change `salesType` to "Tech / SaaS / IT" → confirm leads now favor healthcare/financial verticals (per workbook priorities) instead of construction/property
+  6. Record findings in `codex-notes.md`
+
+- [ ] [claude→codex] **T36: Sync to `~/Projects/boola/`** after T35 passes.
+
+---
+
 - [ ] [claude→codex] **T25: Restore the floating desktop mascot.**
   T23's previous implementation went too far — it removed the mascot window entirely and shoved the whale into the chat header. That violates the new core rule (`claude-notes.md` § Mascot is the product). Bring back the floating mascot window with full original functionality, MINUS the idle bouncing and random swim moments.
 
