@@ -216,6 +216,84 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
   Sync to `~/Projects/boola/` when done.
 
+- [ ] [claude→codex] **T41: Autonomous call mode — mic listening + email extraction + auto follow-up.**
+
+  Current state (audited 2026-05-11): basic Web Speech transcription works; on Start it tries to set `headset` expression but there's no `mascot-emotes/headset.png` so it falls back to `base.png`. No auto-stop, no email extraction from transcript, no auto-task creation. T41 builds the autonomous flow.
+
+  **Mascot states needed (assets):**
+  - **`headset-thinking.png`** — boola wearing black over-ear headphones with thinking face. Used during active listening.
+  - **`holding-email.png`** — boola holding up an envelope. Used after call ends to show "email drafted!" confirmation.
+  - Alena will provide both assets (same generator she used for the rest of `mascot-emotes/`). If they aren't present at code-deploy time, fall back: `headset-thinking` → `thinking.png`, `holding-email` → `excited.png`. No silent failures — log a console message saying "asset missing, using fallback".
+  - Update the expression-mapping table in `chat.html` (lines ~385-400) to include both new keys.
+
+  **Workflow (replace existing `startCallMode` / `stopCallMode`):**
+
+  1. **User clicks Start Listening** → mascot fires `set-expression: headset-thinking`. Boola is silent and listening.
+
+  2. **Continuous transcription** via Web Speech API (already implemented; verify it actually captures by speaking a known phrase and checking the live transcript element renders it. If it doesn't, surface the macOS mic-permission error explicitly instead of just `console.log`).
+
+  3. **Auto-stop on call-end phrases.** On every final transcription chunk, check the last ~6 seconds of text against this regex:
+     ```js
+     const END_CALL_PHRASES = /\b(bye|goodbye|talk to you (later|soon)|have a (good|great) (one|day|night|weekend)|catch you later|appreciate (it|your time)|take care|thanks (for your time|so much)|talk soon|alright thanks)\b/i
+     ```
+     When matched, wait 2 seconds (in case more speech follows), then trigger `stopCallMode()` automatically.
+
+  4. **User can also click Stop Listening manually** (existing button stays).
+
+  5. **On stop (auto or manual):**
+     - Mascot fires `set-expression: thinking` while boola processes the transcript.
+     - Send the full transcript to Claude with this extraction prompt (new function `extractCallContext(transcript)`):
+       ```
+       The following is a one-sided transcript of a sales call — only the sales rep's voice. Extract structured info from it as JSON:
+
+       {
+         "recipient_email": "string or null — parse spelled-out emails like 'john dot doe at gmail dot com' into 'john.doe@gmail.com'",
+         "recipient_phone": "string or null",
+         "recipient_name": "string or null — anyone the rep addressed by name",
+         "company_mentioned": "string or null",
+         "commitment_made": "string or null — what the rep promised to do (send email, call back, etc.)",
+         "followup_date_mentioned": "ISO date string or null — explicit date/time the rep promised",
+         "summary": "2-sentence summary of what was discussed",
+         "rep_pain_points_heard": ["string array — pain points the prospect mentioned (rep would have repeated/acknowledged them)"],
+         "suggested_email_type": "one of: cold | followup1 | aftercall | proposal | won — best fit for the conversation"
+       }
+
+       Return ONLY valid JSON.
+       ```
+     - If `recipient_email` is non-null, auto-draft a follow-up email using `getEmailExpertSystem` + the existing `EMAIL_TYPE_GUIDE[suggested_email_type]`, with the body referencing `commitment_made` and `rep_pain_points_heard`.
+     - Auto-create a follow-up task for **2 days from now** using the existing todo system. Task text: `"Follow up with {recipient_name or recipient_email} — {summary}"`, priority `medium`. Tag the task with `source:'call-auto'` so it's distinguishable from manual todos.
+     - Mascot fires `set-expression: holding-email`. Hold this expression for 4 seconds, then return to `happy`.
+
+  6. **Post-call UI in the call pane:**
+     - Replace the existing "Callback follow-up detected / Email follow-up detected / Call notes captured" branches with a single result card:
+       ```
+       📧 Drafted follow-up email for {recipient}
+       📋 Task added: "Follow up in 2 days"
+       [Preview Email] [Send Now] [Edit]  [Cancel both]
+       ```
+     - **Preview Email** opens the existing email-result UI populated with the drafted message.
+     - **Send Now** fires `send-email` IPC immediately (no edit step). Mascot fires `celebrate`.
+     - **Edit** routes to the Email pane with the draft pre-filled.
+     - **Cancel both** removes the auto-task and discards the draft.
+
+  7. **If `recipient_email` is null** (no email captured during call):
+     - Skip the email draft. Still create the task.
+     - Result card: `"📋 Task added: 'Follow up — {summary}'  [View in Tasks] [Cancel]"`.
+
+  **Integration with T37 (auto-task on email send):**
+  - When the auto-drafted email from T41 is actually sent, T37's logic still fires — but the original 2-day task should be marked as "satisfied" (struck through, moved to Done) since sending the email IS the follow-up. T37 then creates the NEXT follow-up at the appropriate cadence.
+  - Implementation: tag T41's auto-task with `replacedBy: emailId` when its email is sent.
+
+  **Acceptance:**
+  - Click Start Listening → mascot wears headphones + thinking face (or `thinking.png` fallback if asset missing).
+  - Speak a test sentence like "I'll send the quote to mike at acme dot com later today" → on stop, draft appears addressed to `mike@acme.com`.
+  - Say "alright, talk to you later, bye" at the end of a test session → boola auto-stops within 3 seconds.
+  - Verify auto-task exists in Tasks tab with due-date 2 days out.
+  - Click Send Now → mascot celebrates, email goes out, task moves to Done.
+  - Test mic-permission error path: revoke mic in System Settings → click Start Listening → boola surfaces "Microphone access denied — open System Settings → Privacy → Microphone" instead of silently failing.
+
+  Sync to `~/Projects/boola/` when done.
+
 - [ ] [claude→codex] **T38: Todo completion = celebrate + hide from active view.**
   In `chat.html` `toggleTodo(i)`:
   1. When a todo transitions from `done:false` → `done:true`, fire `ipcRenderer.send('celebrate')` (existing IPC — triggers mascot celebrate expression + sparkles). Do not fire on un-toggle.
