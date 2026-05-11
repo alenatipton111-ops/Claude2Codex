@@ -6,9 +6,8 @@ _Architecture, plans, specs, edge cases. Codex reads this; Codex does not edit i
 
 ## Standing context (from ~/.claude/CLAUDE.md)
 
-- **Canonical project folder:** `/Users/alenatipton/Projects/boola/`
-- **Active working copy (8 AM auto-launch):** `/Users/alenatipton/Projects/boola/`
-- Edits should land in `~/Projects/boola/` first so the running app picks them up, then sync to `~/Projects/boola/`.
+- **Canonical project folder (single source of truth):** `/Users/alenatipton/Projects/boola/`
+- The 8 AM `LaunchAgent` runs from here. Edits land here directly — no Desktop/Projects sync step anymore (Desktop folder retired 2026-05-11).
 - **Hard rule:** every new feature must work for an arbitrary paying customer, not just for Alena. No hardcoded user paths, no plaintext creds, no hardcoded company/territory copy.
 
 ## Known scalability debt (punch list)
