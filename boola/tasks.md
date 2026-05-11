@@ -134,19 +134,50 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
   - `placeholders` populated at upload time by scanning the doc XML for `{{...}}` tokens.
 
   **Placeholder convention (final):**
-  - `{{name}}`, `{{email}}`, `{{phone}}`, `{{company}}`, `{{address}}`, `{{title}}` — these auto-fill from the current lead context (or profile, if no lead is selected).
-  - `{{discount}}` or `{{discount_pct}}` — special type. UI shows preset buttons: **10% / 15% / 20% / Custom**. Custom opens a number input.
-  - `{{price}}`, `{{total}}`, `{{deposit}}`, `{{amount}}` — currency input (USD, formatted).
-  - `{{date}}`, `{{start_date}}`, `{{due_date}}` — date picker, defaults to today.
-  - Anything else (`{{project_scope}}`, `{{notes}}`, etc.) — free text input, multi-line.
-  - Classification rule for unknown placeholders: if the name matches one of the above patterns it's typed; otherwise free text. Don't ask Claude to classify — keep it deterministic.
+
+  *Auto-fill from current lead context (set when user opens fill dialog from a lead card or selects a lead in dialog):*
+  - `{{name}}` or `{{client_name}}` — lead's contact name
+  - `{{email}}` or `{{client_email}}` — lead's email
+  - `{{phone}}` or `{{client_phone}}` — lead's phone
+  - `{{company}}` or `{{client_company}}` — lead's company name
+  - `{{address}}` or `{{client_address}}` — lead's mailing address
+  - `{{job_address}}` — defaults to lead address, but is **editable** in the fill dialog (job site often differs from billing/contact address)
+  - `{{title}}` — lead's job title
+
+  *Auto-fill from `profile.json` (captured once at setup, never re-asked):*
+  - `{{rep_name}}`, `{{rep_email}}`, `{{rep_phone}}`, `{{rep_title}}`, `{{rep_company}}` — always populated from profile, never editable in fill dialog
+  - Setup wizard must capture rep info if not already present: name, email, phone, title (use existing company field for rep_company)
+
+  *Typed widgets (deterministic by placeholder name):*
+  - `{{discount}}` or `{{discount_pct}}` — preset buttons **10% / 15% / 20% / Custom**. Custom opens number input. Stored as string like "15%".
+  - `{{price}}`, `{{total}}`, `{{deposit}}`, `{{amount}}`, `{{subtotal}}` — currency input (USD-formatted, e.g. "$1,250.00").
+  - `{{date}}`, `{{start_date}}`, `{{due_date}}`, `{{end_date}}` — date picker, defaults to today.
+  - `{{quantity}}`, `{{qty}}`, `{{units}}` — integer input.
+
+  *Custom user-defined fields:*
+  - Any placeholder that doesn't match the above is **unknown** until configured.
+  - At template upload time, after auto-detection, boola walks the user through each unknown placeholder one by one and asks: "How should `{{XYZ}}` be filled?" with options:
+    - **Free text** (default — single-line or multi-line)
+    - **Dropdown with options** — user supplies comma-separated options ("Standard, Premium, Enterprise")
+    - **Number**
+    - **Date**
+    - **Currency**
+    - **Map to a lead field** — dropdown showing existing auto-fill fields, so the user can alias their custom placeholder to (e.g.) `{{client_name}}` without renaming the template
+  - This configuration is stored per-template in `templates.json` under a `fieldConfig` object: `{ "<placeholder>": { type: "dropdown" | "freeText" | "number" | "date" | "currency" | "alias", options?: string[], aliasOf?: string } }`
+  - User can re-configure later from the template's settings menu (gear icon on each template in the Documents tab).
 
   **Setup wizard (extend `setup.html`):**
-  - Add a "Document templates" section after the existing fields.
+  - Add a **"Rep info"** section before the Document templates section if not already present. Captures: `rep_name`, `rep_email`, `rep_phone`, `rep_title`. Auto-saves to profile. These power the `{{rep_*}}` auto-fills.
+  - Add a **"Document templates"** section after the existing fields.
   - Drag-drop or click-to-upload `.docx` files.
-  - For each uploaded file, show: filename, detected placeholders (chip list), an editable display name, and a remove button.
-  - On save, copy files into the templates directory, persist metadata.
-  - User can also reach this from a new "Document templates" section inside the Settings reopen flow.
+  - For each uploaded file:
+    1. Scan placeholders.
+    2. Show: filename, editable display name, detected placeholders as chips.
+    3. For each placeholder that is NOT in the known-auto-fill list AND NOT in the deterministic-widget list (i.e. unknown custom field), present the field-type configuration UI inline — user picks type, supplies options if dropdown, or aliases to a known field.
+    4. Save button only enables once all unknown placeholders have a type chosen.
+  - Remove button per template.
+  - On wizard save, copy files into templates directory, persist metadata + fieldConfig per template.
+  - User can also reach the template management from a new "📄 Templates" section inside the Settings reopen flow — same upload + configure UI.
 
   **New "📄 Documents" tab in chat:**
   - Tab added to the main tab strip after "Tasks".
