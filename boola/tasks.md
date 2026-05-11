@@ -114,6 +114,77 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
 - [ ] [claude→codex] **T36: Sync to `~/Projects/boola/`** after T35 passes.
 
+- [ ] [claude→codex] **T39: Email header + body spacing fidelity end-to-end.**
+  Audit every code path that takes a Claude-generated email and exposes it to the user:
+  1. `getEmailExpertSystem` already specifies "Subject line first. Then blank line. Then body." Verify the regex/split that parses subject from body in `generateEmail` is robust (handle missing blank line, multi-line subjects, leading/trailing whitespace).
+  2. **Copy button** (`copyResult`) — currently copies rendered HTML innerText. Must preserve actual `\n` so pasting into Gmail/Outlook keeps paragraphs intact. Use `navigator.clipboard.writeText` on the raw text, not the rendered DOM text.
+  3. **Send button** (`sendFromResult` → `send-email` IPC → nodemailer) — confirm `text:` field gets raw body with `\n` and `html:` field uses `<p>` paragraphs (not just `<br>`) so the email client renders proper paragraph spacing.
+  4. Generated subject line is auto-routed to the email's actual Subject header — not buried in the body. Currently the email-pane result shows both subject+body in one text block. Add a small read-only subject field above the body when result renders, so it's visually clear which line becomes the Subject header.
+  5. Acceptance: draft an after-call email, click Copy, paste into a fresh Gmail compose → paragraphs preserved, subject lands in subject row. Send via boola → recipient receives well-formatted email with paragraphs (verify in own inbox).
+
+- [ ] [claude→codex] **T40: Document templates with screenshot-based fill.**
+  New feature: user uploads `.docx` templates with `{{placeholder}}` markers; boola fills them on demand using known lead data, manual input, or screenshot-extracted data.
+
+  **Dependencies:**
+  - `docxtemplater` npm package + `pizzip` (its required peer) — these are the standard Word-mail-merge stack. Preserve fonts, tables, headers/footers, images. Install via `npm install docxtemplater pizzip --save`.
+
+  **Storage:**
+  - Templates live at `app.getPath('userData')/templates/<uuid>.docx`
+  - Metadata at `app.getPath('userData')/templates.json`: `[{id, displayName, originalFilename, placeholders:[], createdAt}]`
+  - `placeholders` populated at upload time by scanning the doc XML for `{{...}}` tokens.
+
+  **Placeholder convention (final):**
+  - `{{name}}`, `{{email}}`, `{{phone}}`, `{{company}}`, `{{address}}`, `{{title}}` — these auto-fill from the current lead context (or profile, if no lead is selected).
+  - `{{discount}}` or `{{discount_pct}}` — special type. UI shows preset buttons: **10% / 15% / 20% / Custom**. Custom opens a number input.
+  - `{{price}}`, `{{total}}`, `{{deposit}}`, `{{amount}}` — currency input (USD, formatted).
+  - `{{date}}`, `{{start_date}}`, `{{due_date}}` — date picker, defaults to today.
+  - Anything else (`{{project_scope}}`, `{{notes}}`, etc.) — free text input, multi-line.
+  - Classification rule for unknown placeholders: if the name matches one of the above patterns it's typed; otherwise free text. Don't ask Claude to classify — keep it deterministic.
+
+  **Setup wizard (extend `setup.html`):**
+  - Add a "Document templates" section after the existing fields.
+  - Drag-drop or click-to-upload `.docx` files.
+  - For each uploaded file, show: filename, detected placeholders (chip list), an editable display name, and a remove button.
+  - On save, copy files into the templates directory, persist metadata.
+  - User can also reach this from a new "Document templates" section inside the Settings reopen flow.
+
+  **New "📄 Documents" tab in chat:**
+  - Tab added to the main tab strip after "Tasks".
+  - Shows a list of all saved templates with display name + placeholder count.
+  - Click a template → opens the **Fill dialog**.
+
+  **Fill dialog:**
+  1. Header: template name + "Fill from" toggle: **🧠 Lead data** (default) / **📸 Screenshot** / **✍️ Manual**.
+  2. Body: one input row per placeholder, pre-filled where boola knows the answer:
+     - From the currently active lead in the Leads tab (if one is selected) — name, company, phone, address etc.
+     - From `profile.json` — your name, your company, your contact info (for placeholders like `{{rep_name}}` or `{{rep_email}}`).
+  3. Discount/price/date placeholders render their special widgets (preset buttons / currency / picker).
+  4. **Screenshot mode:** drag-drop image OR Cmd+V paste from clipboard. Boola sends the image to Claude's vision API (model `claude-sonnet-4-5` or current) with a prompt asking it to extract specifically the missing placeholders → JSON response → auto-fill the form. User reviews + edits before confirming.
+  5. **Manual mode:** form pre-fills only from profile.json — user types the rest.
+  6. Footer: **Preview** (opens the filled doc in Quick Look) / **Download .docx** / **Send as email attachment** (uses existing Gmail send).
+
+  **Claude vision wiring:**
+  - `callClaude` currently only handles text. Add a new code path that accepts `{ system, userMsg, history, images:[{base64, mediaType}] }`.
+  - Send to `https://api.anthropic.com/v1/messages` with content blocks: `[{type:'image', source:{type:'base64', media_type:'image/png', data:...}}, {type:'text', text: extractionPrompt}]`.
+  - Extraction prompt: `"Look at this screenshot and extract the following fields. Return ONLY valid JSON with these keys: {placeholder list}. If a field is not present in the image, set its value to null."`
+  - Add `// SCALABILITY: image API calls will route through boola backend in production` comment.
+
+  **Docxtemplater integration in `main.js`:**
+  - IPC `template-list` — returns metadata
+  - IPC `template-fill` — input: `{templateId, data}` — loads template, runs through docxtemplater, returns either a temp file path (for download) or a base64 buffer (for email attachment)
+  - IPC `template-add` — input: `{sourcePath or buffer, displayName}` — copies into templates dir, scans placeholders, persists metadata
+  - IPC `template-remove` — input: `{templateId}` — deletes file + metadata entry
+  - IPC `template-scan-placeholders` — input: file path or buffer — returns array of unique `{{...}}` tokens found in the doc text
+
+  **Acceptance:**
+  - Upload a real Word doc with 3+ placeholders via setup wizard → confirm placeholders are auto-detected (visible as chips).
+  - Open Documents tab → click template → fill dialog opens with lead data pre-filled, manual fields empty.
+  - Switch to Screenshot mode → paste a screenshot containing a name + email → boola fills those two fields automatically.
+  - Click Download → `.docx` opens in Word with placeholders replaced and original formatting intact.
+  - Discount field shows 10/15/20/Custom buttons; selecting one writes "10%" (or whatever) into the doc.
+
+  Sync to `~/Projects/boola/` when done.
+
 - [ ] [claude→codex] **T38: Todo completion = celebrate + hide from active view.**
   In `chat.html` `toggleTodo(i)`:
   1. When a todo transitions from `done:false` → `done:true`, fire `ipcRenderer.send('celebrate')` (existing IPC — triggers mascot celebrate expression + sparkles). Do not fire on un-toggle.
