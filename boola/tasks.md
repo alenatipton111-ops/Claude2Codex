@@ -216,6 +216,74 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
   Sync to `~/Projects/boola/` when done.
 
+- [ ] [claude→codex] **T42: Full QA pass — user functionality + bug hunt across Update 5.**
+  After T26-T41 are individually marked done, run a full top-to-bottom user smoke test as if you were Alena using boola for a workday. Don't just check that code compiles — actually exercise every flow and capture what breaks. Report findings in `codex-notes.md` under a `## T42 QA pass` section.
+
+  **Run these scenarios in order, document each result:**
+
+  1. **Cold install path:** delete `app.getPath('userData')/profile.json`, relaunch. Setup wizard appears. Walk through every field including the new sales type / target verticals / territory radius / rep info / document templates section. Save. Confirm main app launches with mascot in the corner.
+
+  2. **Lead generation:** open Leads tab → tap ↻. Confirm:
+     - Progress strip shows "Validating leads… N/M checked, K valid"
+     - Generation completes within ~90s
+     - 10 distinct leads appear (count them)
+     - Each has phone, vertical chip, confidence score, why-now line, suggested buyer
+     - No "Hudson Yards / Marriott Marquis / NYU Langone" anywhere — fallbackPool is gone
+     - Inspect `.boola_todays_leads.json` to verify schema
+
+  3. **Lead repeat check:** delete `.boola_todays_leads.json` (force regen), tap ↻ again. Confirm at least 8 of the 10 leads are different from the previous run (rolling exclusion working).
+
+  4. **Sales type swap:** open Settings, change sales type from "Facilities / Junk Removal" to "Tech / SaaS / IT", save. Tap ↻. Confirm leads now skew healthcare/financial verticals (per workbook priority scores), NOT property/construction.
+
+  5. **Email pane:** generate a cold email using a real lead from the list. Verify:
+     - Subject appears in a clearly-labeled subject row, body below in a separate area
+     - Click Copy → paste into a fresh Gmail compose → paragraphs preserved, no `<br>` artifacts
+     - Click Send → recipient gets a properly-formatted email with paragraph spacing (test by sending to your own address)
+     - Verify auto-task appears in Tasks tab with correct due-date per email type
+
+  6. **Todo flow:** add 3 todos. Check one off. Confirm:
+     - Mascot celebrates (sparkles + happy face)
+     - Item slides out of Open view
+     - Appears in Done tab with completion timestamp
+     - Un-check from Done → returns to Open, no celebrate
+
+  7. **Documents tab:** upload a sample .docx with `{{name}}`, `{{job_address}}`, `{{discount}}`, plus one custom field like `{{service_tier}}`. During upload, confirm the field-type configuration step appears for the unknown placeholder (lets you pick dropdown/text/etc.). After save, open Documents tab, click the template:
+     - Lead-data fields auto-fill from the active lead
+     - Discount field shows 10/15/20/Custom buttons
+     - Job address pre-fills from lead address but is editable
+     - Click Download → opens in Word, all placeholders replaced, formatting intact
+
+  8. **Document screenshot fill:** in the same fill dialog, switch to Screenshot mode. Paste a screenshot containing a name + email. Confirm:
+     - Boola shows a brief "extracting…" state
+     - Fields populate from the image
+     - You can edit before downloading
+
+  9. **Call mode:**
+     - Click Start Listening. Mascot wears headphones + thinking face (or `thinking.png` fallback if asset missing — verify console message says so).
+     - Speak: "Hey Mike, I'll send the quote to mike at acme dot com tomorrow morning. Talk to you later."
+     - Within ~3 seconds of "talk to you later", boola auto-stops listening.
+     - Confirmation card appears: "📧 Drafted follow-up email for mike@acme.com / 📋 Task added: Follow up in 2 days"
+     - Mascot holds-email gesture (or fallback to `excited.png` with console message)
+     - Click Send Now → email goes out, mascot celebrates, auto-task is marked replaced when T37's new task gets created
+     - Verify "Pause auto-stop" toggle appears in the call banner during listening (default off — auto-stop is enabled by default)
+
+  10. **Mic permission edge case:** revoke mic in System Settings → Privacy → Microphone, click Start Listening. Boola surfaces an explicit error message instead of silently failing.
+
+  11. **Mascot rules:** confirm whale sits still in corner — no idle bounce, no random swims after 30+ minutes idle. Click whale → chat opens. Drag whale → it moves, position persists across relaunch.
+
+  12. **Setup re-entry:** click Settings gear from chat sidebar. Setup wizard reopens with all fields pre-populated from current profile. Edit a field, save, confirm change persists.
+
+  **Bugs to specifically watch for** (these have bitten before):
+  - Multiple Electron instances running simultaneously after a relaunch (use `pgrep -fl boola` to verify only one)
+  - Cache files not regenerating after profile changes
+  - Mascot off-screen on multi-monitor setups
+  - Network calls (DDG, Socrata) silently timing out and producing empty leads
+  - Modal/window position bugs on different display sizes
+
+  **For each scenario:** mark ✅ pass, ⚠️ partial (what's off), or ❌ fail (what broke). For any ⚠️ or ❌, include the exact reproduction steps and the file/line you suspect.
+
+  Sync any final fixes to `~/Projects/boola/`. When this task is done, Update 5 is complete.
+
 - [ ] [claude→codex] **T41: Autonomous call mode — mic listening + email extraction + auto follow-up.**
 
   Current state (audited 2026-05-11): basic Web Speech transcription works; on Start it tries to set `headset` expression but there's no `mascot-emotes/headset.png` so it falls back to `base.png`. No auto-stop, no email extraction from transcript, no auto-task creation. T41 builds the autonomous flow.
