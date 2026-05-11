@@ -114,6 +114,20 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
 - [ ] [claude→codex] **T36: Sync to `~/Projects/boola/`** after T35 passes.
 
+- [ ] [claude→codex] **T38: Todo completion = celebrate + hide from active view.**
+  In `chat.html` `toggleTodo(i)`:
+  1. When a todo transitions from `done:false` → `done:true`, fire `ipcRenderer.send('celebrate')` (existing IPC — triggers mascot celebrate expression + sparkles). Do not fire on un-toggle.
+  2. Filter behavior:
+     - **All** and **Active** filters: hide any todo where `done:true`. Currently "All" shows everything; change so "All" shows active + high-priority but not done.
+     - **Done** filter: shows ONLY completed todos (already works).
+     - **High** filter: still hides done items.
+  3. Animate the line item out before it disappears — opacity 0 + slide-right over 350ms — so it doesn't just pop out abruptly. Then re-render the list.
+  4. Updated filter labels for clarity:
+     - "All" → "Open" (since done is now hidden by default)
+     - keep "Active" / "🔴 Urgent" / "Done"
+  5. Done view shows completion timestamp under each task. Add `completedAt` to the todo schema when marking done. Show as "✓ completed {relative time}" — e.g. "✓ completed 2h ago".
+  Acceptance: check off a todo → mascot celebrates → item slides out → reappears in Done tab with timestamp. Un-toggle from Done tab → item returns to Open tab, no celebrate.
+
 - [ ] [claude→codex] **T37: Auto-task on email send.**
   After `send-email` IPC succeeds, automatically:
   1. Append entry to `~/Library/Application Support/boola/sent-emails.json`: `{to, subject, type, sentAt, leadId?, taskId?}`
