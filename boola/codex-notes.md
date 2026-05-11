@@ -233,3 +233,31 @@ _(Codex fills this in after each task — newest at top)_
 
 ### Notes
 - `/Users/alenatipton/Projects/boola/` is not currently a git repo, so the per-task commit is recorded in `~/ai-notes` only.
+
+## 2026-05-11T23:37:13Z - T27 setup wizard sales type and verticals
+
+### Implemented
+- Added workbook-backed `salesType` to `DEFAULT_CUSTOMER_PROFILE` with Alena's default `facilities_commercial_services_junk_sales`.
+- Added workbook-backed `targetVerticals` defaults for the junk-removal sales type:
+  - property management / multifamily
+  - commercial real estate / office buildings
+  - construction / restoration
+- Added `region.radiusMiles` default of 25.
+- Updated profile merge logic so `targetVerticals` persists and falls back safely.
+- Rebuilt `setup.html` with:
+  - Sales type dropdown sourced from `lead-rules.json` `Category_Summary` rows.
+  - Dynamic target-vertical checkboxes sourced from `lead-rules.json` `Master_B2B_Lead_Rules` rows for the selected sales type.
+  - Priority-score display on each target vertical.
+  - Territory radius number input.
+  - Save path for `profile.salesType`, `profile.targetVerticals`, `profile.verticals`, and `profile.region.radiusMiles`.
+
+### Test output
+- `node --check ~/Projects/boola/main.js` passed.
+- Extracted scripts from `setup.html`, `chat.html`, `prospect.html`, and `mascot.html` compiled with `vm.Script`.
+- Confirmed `lead-rules.json` exposes 35 sales types.
+- Confirmed default junk-removal sales type exposes 3 target verticals.
+
+### Manual smoke needed
+- Open Settings/setup and confirm the dropdown renders all 35 sales types.
+- Change sales type and confirm target vertical checkboxes update dynamically.
+- Save and inspect `profile.json` to confirm `salesType`, `targetVerticals`, and `region.radiusMiles` persist.
