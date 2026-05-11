@@ -29,7 +29,7 @@
   6. Confirm UI shows ✓ badges
   7. Record findings in `codex-notes.md`
 
-- [x] [claude→codex] **T11: Sync to project folder** — after T10 passes, copy edited files (`prospect.html`, `main.js`, `chat.html`) from `~/Desktop/boola-new/` to `~/Projects/boola/`.
+- [x] [claude→codex] **T11: Sync to project folder** — after T10 passes, copy edited files (`prospect.html`, `main.js`, `chat.html`) from `~/Projects/boola/` to `~/Projects/boola/`.
 
 - [ ] [claude→codex] **T12: Acceptance check** — verify each acceptance criterion from `claude-notes.md` § Acceptance criteria. Note any that fail in `codex-notes.md` so Claude can address in the next planning round.
 
@@ -63,7 +63,7 @@ _(Added 2026-04-29 — drop license-based signals, add action-based fetchers, ad
 ## Phase 2 — Workbook-driven lead generation
 _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on `lead-rules.xlsx`. Spec in `claude-notes.md` § Phase 2.)_
 
-- [ ] [claude→codex] **T26: Build `scripts/build-lead-rules.js`.** Reads `~/Desktop/boola-new/lead-rules.xlsx`, emits `~/Desktop/boola-new/lead-rules.json` with all 8 tabs as keyed objects/arrays. Use the `xlsx` or `node-xlsx` npm package (or existing if already in deps). Run once and commit the resulting JSON. Add an `npm run build:lead-rules` script in `package.json`. Goal: zero xlsx parsing at runtime.
+- [ ] [claude→codex] **T26: Build `scripts/build-lead-rules.js`.** Reads `~/Projects/boola/lead-rules.xlsx`, emits `~/Projects/boola/lead-rules.json` with all 8 tabs as keyed objects/arrays. Use the `xlsx` or `node-xlsx` npm package (or existing if already in deps). Run once and commit the resulting JSON. Add an `npm run build:lead-rules` script in `package.json`. Goal: zero xlsx parsing at runtime.
 
 - [ ] [claude→codex] **T27: Add sales-type + target-verticals to setup wizard.**
   In `setup.html`:
@@ -89,7 +89,7 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 - [ ] [claude→codex] **T31: Rewrite `generateProspects` in `prospect.html`** as the workbook-driven 3-bucket pipeline per `claude-notes.md` § Phase 2 lead-gen pipeline. Acceptance: 10 leads/day, no static fallbackPool, never repeats yesterday's leads (rolling 14-day exclusion).
 
 - [ ] [claude→codex] **T32: Rolling exclusion list.**
-  In `main.js`: maintain `~/Desktop/boola-new/.boola_lead_history.json` (or under `app.getPath('userData')`) with `[{name, date, source}]` entries for last 14 days. Drop entries older than 14 days on each write. `validate-news-lead` and the new vertical/seasonal fetchers must check this file and skip any name already on it. Persist new leads to it after generation.
+  In `main.js`: maintain `~/Projects/boola/.boola_lead_history.json` (or under `app.getPath('userData')`) with `[{name, date, source}]` entries for last 14 days. Drop entries older than 14 days on each write. `validate-news-lead` and the new vertical/seasonal fetchers must check this file and skip any name already on it. Persist new leads to it after generation.
 
 - [ ] [claude→codex] **T33: Lead card UI upgrade.**
   In `chat.html` lead rendering: each card gains
@@ -488,7 +488,7 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
   6. Open Settings → uncheck `illegal-dumping` → save → tap ↻ — confirm no dumping leads appear
   7. Record findings in `codex-notes.md`
 
-- [x] [claude→codex] **T20: Sync to project folder** — `~/Desktop/boola-new/` → `~/Projects/boola/` for all edited/added files.
+- [x] [claude→codex] **T20: Sync to project folder** — `~/Projects/boola/` → `~/Projects/boola/` for all edited/added files.
 
 ## Completed
 
@@ -498,16 +498,16 @@ _(none yet)_
 
 - [ ] [codex→claude] **Review latest Boola mascot/emote work in Claude Code.**
   Open the live app folder in Claude Code:
-  `cd /Users/alenatipton/Desktop/boola-new && claude`
+  `cd /Users/alenatipton/Projects/boola && claude`
 
   Context:
   - Codex removed the floating always-on-top mascot window from normal startup so Boola no longer floats around the desktop.
-  - Codex launched the updated app from `~/Desktop/boola-new/`.
+  - Codex launched the updated app from `~/Projects/boola/`.
   - Codex replaced the old hand-drawn/SVG mascot rendering with approved image-backed assets from:
     - `~/Downloads/Boola Mas.png`
     - `~/Downloads/Boola Expressions.png`
   - New assets live in:
-    - `~/Desktop/boola-new/mascot-emotes/`
+    - `~/Projects/boola/mascot-emotes/`
     - synced copy: `~/Projects/boola/mascot-emotes/`
   - Implemented emote files:
     `base.png`, `open-mouth.png`, `throwing-money.png`, `swimming.png`, `thinking.png`, `confused.png`, `cooking-money.png`, `email-reject.png`, `angry.png`, `waving.png`, `excited.png`, `sleeping.png`
@@ -521,4 +521,4 @@ _(none yet)_
   - Confirm the header avatar expression swaps are acceptable UX now that the floating mascot is disabled.
   - Confirm whether T22 and T23 should be marked complete, partially complete, or rewritten around the new asset-backed mascot system.
   - If Claude wants to run the app manually, use:
-    `cd /Users/alenatipton/Desktop/boola-new && npx electron .`
+    `cd /Users/alenatipton/Projects/boola && npx electron .`

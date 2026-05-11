@@ -7,8 +7,8 @@ _Architecture, plans, specs, edge cases. Codex reads this; Codex does not edit i
 ## Standing context (from ~/.claude/CLAUDE.md)
 
 - **Canonical project folder:** `/Users/alenatipton/Projects/boola/`
-- **Active working copy (8 AM auto-launch):** `/Users/alenatipton/Desktop/boola-new/`
-- Edits should land in `~/Desktop/boola-new/` first so the running app picks them up, then sync to `~/Projects/boola/`.
+- **Active working copy (8 AM auto-launch):** `/Users/alenatipton/Projects/boola/`
+- Edits should land in `~/Projects/boola/` first so the running app picks them up, then sync to `~/Projects/boola/`.
 - **Hard rule:** every new feature must work for an arbitrary paying customer, not just for Alena. No hardcoded user paths, no plaintext creds, no hardcoded company/territory copy.
 
 ## Known scalability debt (punch list)
