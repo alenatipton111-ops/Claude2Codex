@@ -196,3 +196,40 @@ _(Codex fills this in after each task — newest at top)_
 - After relaunch, confirm floating Boola appears bottom-right, sits still, toggles chat on click, and can be dragged.
 - Confirm Test Mood changes the mascot expression without moving Boola across the screen.
 - Confirm no random mascot animation fires after 45+ minutes.
+
+## 2026-05-11T23:33:05Z - T26 lead-rules workbook build
+
+### Implemented
+- Read `claude-notes.md` § Phase 2 and `tasks.md`; started the Update 5 sequence at T26 in the canonical `/Users/alenatipton/Projects/boola/` app folder.
+- Installed the `xlsx` dependency locally for workbook conversion.
+- Added `scripts/build-lead-rules.js`.
+- Added `npm run build:lead-rules` to `package.json`.
+- Built `lead-rules.json` from `lead-rules.xlsx` with all 8 required tabs:
+  - `Master_B2B_Lead_Rules`
+  - `Bot_Instructions`
+  - `Sources`
+  - `Category_Summary`
+  - `Cold_Email_Rules`
+  - `Regional_Source_Rules`
+  - `Source_Routing_Logic`
+  - `Source_Scoring_Rules`
+- The generated JSON includes raw sheet rows plus indexes for category summary, master rules, sources, regional source rules, routing logic, scoring rules, and cold email rules.
+
+### Test output
+- `npm install xlsx --save` completed; npm reported 3 existing high-severity audit findings.
+- `npm run build:lead-rules` passed and emitted `/Users/alenatipton/Projects/boola/lead-rules.json`.
+- Row counts from the build:
+  - Master_B2B_Lead_Rules: 105
+  - Bot_Instructions: 18
+  - Sources: 42
+  - Category_Summary: 35
+  - Cold_Email_Rules: 46
+  - Regional_Source_Rules: 55
+  - Source_Routing_Logic: 12
+  - Source_Scoring_Rules: 9
+- `node --check scripts/build-lead-rules.js` passed.
+- Parsed `package.json` and `lead-rules.json` successfully with `JSON.parse`.
+- Spot check: default junk-removal sales type resolves to property management / multifamily, commercial real estate / office buildings, and construction / restoration.
+
+### Notes
+- `/Users/alenatipton/Projects/boola/` is not currently a git repo, so the per-task commit is recorded in `~/ai-notes` only.
