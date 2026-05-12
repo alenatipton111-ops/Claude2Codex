@@ -261,3 +261,30 @@ _(Codex fills this in after each task — newest at top)_
 - Open Settings/setup and confirm the dropdown renders all 35 sales types.
 - Change sales type and confirm target vertical checkboxes update dynamically.
 - Save and inspect `profile.json` to confirm `salesType`, `targetVerticals`, and `region.radiusMiles` persist.
+
+## 2026-05-12T13:14:20Z - Fixed old repeating lead fallback
+
+### Implemented
+- Responded to Alena's report that Leads was still producing the old pre-update companies.
+- Found the root cause in `prospect.html`: the old `fallbackPool` still existed and `generateProspects()` still padded with Hudson Yards, Marriott Marquis Times Square, and NYU Langone whenever validation was thin.
+- Deleted the static `fallbackPool` and all `// PHASE-1-TEMP` fallback usage from `prospect.html`.
+- Updated today's lead cache gate so old cached fallback leads are not treated as valid:
+  - cache must contain at least 10 leads
+  - each lead must be validated today
+  - `source:'Backup'` is rejected
+- Wired `generateProspects()` to the workbook-driven buckets:
+  - Bucket 1: regional news/structured action signals capped at 3
+  - Bucket 2: `fetch-vertical-leads` fills toward 7 using selected workbook target verticals
+  - Bucket 3: `fetch-seasonal-leads` fills remaining spots from seasonal workbook rows
+- Added lead dedupe, confidence decoration, default vertical/buyer metadata, and a no-static-fallback empty state.
+- Relaunched Boola from `/Users/alenatipton/Projects/boola/`.
+
+### Test output
+- `node --check ~/Projects/boola/main.js` passed.
+- Extracted scripts from `prospect.html`, `setup.html`, `chat.html`, and `mascot.html` compiled with `vm.Script`.
+- `rg` confirmed no `fallbackPool`, `PHASE-1-TEMP`, Hudson Yards Development, Marriott Marquis Times Square, or NYU Langone Medical Center remain in `main.js`/`prospect.html`.
+- Relaunch log showed only the existing Chromium `kern.hv_vmm_present` warning and no app crash.
+
+### Manual smoke needed
+- Open Leads and hit refresh. It should ignore the old 3-lead cache and attempt the workbook pipeline instead of showing the static anchors.
+- If it returns fewer than 10, that is now a real validation/search issue to tune, not the old static fallback masking the problem.
