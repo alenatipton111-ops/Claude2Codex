@@ -24,6 +24,21 @@ _Architecture, plans, specs, edge cases. Codex reads this; Codex does not edit i
 
 ---
 
+## Universal SaaS rule — non-negotiable
+
+Boola is sold to **any B2B seller anywhere selling anything.** Junk removal in NYC, medical devices in Cincinnati, SaaS in Austin, commercial cleaning in Toronto — same code, different workbook/profile data.
+
+**No code may contain:**
+- Hardcoded city/state/country names or neighborhoods
+- Hardcoded URLs (OpenData portals, WARN sites, news feeds)
+- Hardcoded company names, chain lists, vertical mappings
+- `if (salesType === ...)` or `if (region === ...)` branches
+- "Supported regions" gating
+
+**All such data lives in `lead-rules.xlsx`** (and `profile.json` for per-customer customization). New region or new sales type = new workbook row, zero code changes.
+
+**Litmus test:** before merging any task, mentally swap the customer to "medical device rep in Phoenix." If the feature breaks or needs special handling, the implementation is wrong.
+
 ## Mascot is the product — non-negotiable
 
 Boola IS the floating whale in the corner. The mascot is not optional, not a launcher, not a header avatar. It must be:

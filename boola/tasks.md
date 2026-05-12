@@ -216,6 +216,71 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
   Sync to `~/Projects/boola/` when done.
 
+## Phase 2.4 — Full regionalization (must happen before Phase 2.5)
+_(Added 2026-05-12 — current code still hardcodes NYC OpenData endpoints, news feeds, chain lists, neighborhood regex. Cincinnati/Boston/SF customers would silently get empty leads. Fix before building Google Places so Places is region-aware from line 1.)_
+
+- [ ] [claude→codex] **T48: Eliminate ALL hardcoded region/customer data. Zero special-casing for any city or product.**
+  Boola must work identically for a rep in any U.S. city (and ideally any city globally) selling any B2B product/service. The code knows about nothing specific. The workbook + profile drive everything.
+
+  **Step 1 — Delete hardcoded regional data:**
+  - `main.js`: Delete `NYC_BIZ_API`, `DOB_PERMITS_API`, `DOB_JOBS_API`, `NYC_311_API`, `dol.ny.gov` constants and any handler that calls them directly. Delete `NYC_BOROUGHS` and `NYC_GEO_MAIN` regexes. Delete any hardcoded company names or borough lists.
+  - `prospect.html`: Delete `KNOWN_COMPANIES` list (Vornado, Brookfield, etc.) — discovery is Google Places' job (T43). Delete or generalize `FILLER` regex (remove NYC neighborhood tokens). Delete or generalize `BROAD_KEYWORDS` (replace with content-based keywords like "deal/closed/construction" with no city tokens). Delete `NYC_GEO` and `NON_NYC_GEO` references that aren't sourced from profile.
+  - Setup wizard: region is **free-text city + state** input. No dropdown of "supported regions."
+
+  **Step 2 — Universal region resolution via geocoding:**
+  - On profile save, if `region.latitude` / `region.longitude` not present, call **Nominatim** (free, no key, global): `https://nominatim.openstreetmap.org/search?q={city},{state}&format=json&limit=1`. Cache lat/lng/bbox onto `profile.region`. Works for any city on Earth.
+  - If geocoding fails, show error: "Couldn't locate {city}, {state} — check spelling." Don't fall back to NYC.
+  - All location-based searches (Google Places, etc.) use `profile.region.latitude`/`.longitude`/`.radiusMiles`. No region-specific code paths.
+
+  **Step 3 — Default news feeds = national, not regional:**
+  - Add a `Default_News_Feeds` workbook tab with ~10 high-quality national U.S. business feeds (Bloomberg Business, WSJ Business, Inc., Forbes Business, Axios Business, Reuters Business, Business Insider, CNBC Business, Crain's, BizJournals national).
+  - Default profile.newsFeeds = the Default_News_Feeds list (loaded at profile creation).
+  - News filter logic uses **content keywords** (closing/opening/permit/expansion/relocation/construction/renovation/dumping/damage) — NOT city/state names. A national feed mentioning Cincinnati construction passes the same way an NYC feed mentioning Manhattan construction does.
+
+  **Step 4 — Regional enhancement layer (optional, data-driven only):**
+  - Add a new workbook tab `Regional_Sources` with one row per metro the operator (you) wants to curate local data for. Schema:
+    `region_match (city or state lowercase) | local_news_feeds_json | opendata_construction_url | opendata_311_url | warn_url`
+  - At profile load, after geocoding, check if `Regional_Sources` has a row matching the user's city or state. If yes: merge those local feeds into `profile.newsFeeds` and store the optional OpenData URLs in `profile.regionalEnhancements`. If no row matches: just use national defaults. No errors, no special handling, no "unsupported region" warnings.
+  - Customer can manually paste additional RSS URLs into setup wizard later.
+
+  **Step 5 — OpenData fetchers become generic and optional:**
+  - `fetch-construction-permits`, `fetch-renovation-permits`, `fetch-illegal-dumping`, `fetch-job-filings`, `fetch-warn-closures` all become parameterized: each reads its URL from `profile.regionalEnhancements` for the relevant key. If no URL set, the handler returns `[]` silently — no error, no fallback to NYC URLs.
+  - The lead pipeline doesn't care whether OpenData returned data or not — it falls through to news + Google Places.
+
+  **Step 6 — Chain blocklist universal + extensible:**
+  - Add workbook tab `Chain_Blocklist`: a single column of business names that are chains anywhere in the world (Starbucks, McDonald's, Marriott, Walmart, Target, CVS, Walgreens, Hilton, Hyatt, IHG, Best Buy, Home Depot, Lowe's, etc.) — about 100 entries. Curate from publicly-known major chains, no NYC bias.
+  - Customer can extend their personal blocklist via Settings → "Always exclude these companies" (free-text list, persisted to `profile.personalBlocklist`).
+  - Filter logic merges global + personal blocklist. No regional-specific lists.
+
+  **Step 7 — Sales type / vertical / product is fully workbook-driven (verify, don't rebuild):**
+  - 35 sales types already in workbook ✅
+  - Each vertical row already has buyer titles, buying triggers, priority score ✅
+  - Verify the code reads ALL of this from workbook with no hardcoded fallbacks for any specific sales type.
+  - Codex must not write `if (salesType === 'facilities_commercial_services_junk_sales') { ... }` anywhere. If you see this pattern, remove it.
+
+  **Acceptance:**
+  - Set up a fresh profile with city=Cincinnati, state=OH, salesType=medical_device_sales → lead pipeline runs successfully, returns 5-10 leads in Cincinnati for medical verticals (hospitals, clinics, etc.), uses national news feeds, skips OpenData silently (no Cincinnati URLs configured), no errors anywhere.
+  - Set up another profile with city=Phoenix, state=AZ, salesType=janitorial_sanitation_sales → also works without any code changes.
+  - Set up city=Toronto, state=ON (or province) → geocoding via Nominatim resolves it, Google Places returns Toronto businesses, national U.S. feeds run (or fail gracefully on relevance — that's fine, Places carries the load).
+  - Grep all code: zero matches for `nyc`, `manhattan`, `brooklyn`, `1-800-GOT-JUNK`, hardcoded data.cityofnewyork.us URLs (the strings exist only as workbook data, never in source code).
+
+- [ ] [claude→codex] **T49: Sales-type-driven Google Places type mapping in workbook.**
+  Add a new column `places_types_csv` to the workbook `Master_B2B_Lead_Rules` tab. Each row's CSV lists Google Places `includedTypes` for that vertical:
+  - "property management / multifamily" → `real_estate_agency,property_management_company,apartment_complex`
+  - "hospitals" → `hospital`
+  - "ambulatory surgery centers" → `medical_lab,doctor`
+  - "general contractor / restoration" → `general_contractor,roofing_contractor,plumber`
+  - "restaurants" → `restaurant`
+  - "law offices" → `lawyer`
+  - "schools / universities" → `school,primary_school,secondary_school,university`
+  - "warehouses / logistics" → `warehouse`
+  - "hotels" → `lodging`
+  - "retail stores" → `clothing_store,shoe_store,store,furniture_store`
+
+  Pre-populate for all 35 sales types in workbook. Rebuild lead-rules.json. Code in `main.js` reads `places_types_csv` per vertical instead of having a hardcoded mapping table. New sales type or vertical = just add a workbook row, no code changes.
+
+  Acceptance: changing profile salesType from "facilities" to "medical_device_sales" → Google Places searches hospital/clinic types automatically, no code touched.
+
 ## Phase 2.5 — Google Places business discovery
 _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 results. Spec in `claude-notes.md` § Phase 2.5.)_
 
