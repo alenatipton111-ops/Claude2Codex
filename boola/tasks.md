@@ -216,6 +216,35 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
   Sync to `~/Projects/boola/` when done.
 
+## Phase 2.5 — Google Places business discovery
+_(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 results. Spec in `claude-notes.md` § Phase 2.5.)_
+
+- [ ] [claude→codex] **T43: Wire Google Places API (New) into `main.js`.**
+  - Add `googlePlacesApiKey` field to setup wizard with helper tooltip linking to https://console.cloud.google.com/apis/library/places.googleapis.com — also add `region.latitude` + `region.longitude` fields (auto-resolved via Geocoding API on save).
+  - New IPC handler `places-discover({vertical, region, radiusMiles, count})`.
+  - Implement vertical → `includedTypes` mapping table per `claude-notes.md` § Phase 2.5 architecture #2.
+  - Call `places:searchNearby` endpoint with proper FieldMask; return normalized `{name, address, phone, website, googlePlaceId, userRatingCount, primaryType, types[]}`.
+  - Geocode `region.label` → lat/lng on profile save if missing, cache to profile.
+  - Acceptance: with valid key, `places-discover({vertical:'property manager', region:{label:'New York City'}, radiusMiles:25, count:10})` returns 10 callable property management firms with phone + address.
+
+- [ ] [claude→codex] **T44: Replace DDG vertical search with Google Places.**
+  - In `fetchVerticalLeadsCore` (`main.js`), remove the `findVerticalLeadCandidates(query)` DDG path entirely for vertical-bucket leads.
+  - Wire `places-discover` per workbook-selected vertical. For each enabled vertical (sorted by priority_score), call Places once with `count: 50`, filter through chain blocklist + 14-day exclusion + mid-size heuristic, take top `targetCount / verticalCount` from each.
+  - Daily rotation: shuffle the post-filter pool using `Math.floor(Date.now() / 86400000)` as seed. Stable within a day, fresh next day.
+  - News bucket (RSS+DOB+311+WARN) unchanged.
+  - Seasonal bucket uses same `places-discover` infrastructure with vertical list derived from current month.
+  - Fallback chain: if no API key OR HTTP 429, show banner + degrade gracefully per `claude-notes.md` § Phase 2.5 #8.
+  - Acceptance: run leads pipeline → 7-10 vertical leads, no chains, no repeats from last 14 days.
+
+- [ ] [claude→codex] **T45: Chain/franchise blocklist + mid-size filter.**
+  - Implement `CHAIN_BLOCKLIST` in `main.js` per `claude-notes.md` § Phase 2.5 #3 — 30-40 known chains across verticals.
+  - Reject candidates whose name matches blocklist (case-insensitive, partial match OK — e.g. "Marriott Marquis" matches "Marriott").
+  - Add `sizeBucket` field per `claude-notes.md` § Phase 2.5 #4 — derived from `userRatingCount`. Boost mid-size in sort order.
+  - Auto-learn: when the same business name appears 3+ times across customers in 30 days (future SaaS infra) add to dynamic blocklist. For now, mark `// SCALABILITY:` and stub.
+
+- [ ] [claude→codex] **T46: Re-verify and fix remaining Codex Update 5 tasks.**
+  Codex reported done on T26-T32 but failed to mark them complete in `tasks.md`. Confirm each is actually working (especially T32 rolling exclusion — `lead-history.json` should exist and be enforced). Mark them with `[x]` after verifying. Then proceed with the previously-queued T33-T42 in order. **Do not claim completion on a task until you've manually tested its acceptance criteria.**
+
 - [ ] [claude→codex] **T42: Full QA pass — user functionality + bug hunt across Update 5.**
   After T26-T41 are individually marked done, run a full top-to-bottom user smoke test as if you were Alena using boola for a workday. Don't just check that code compiles — actually exercise every flow and capture what breaks. Report findings in `codex-notes.md` under a `## T42 QA pass` section.
 

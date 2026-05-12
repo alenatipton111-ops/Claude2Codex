@@ -310,6 +310,110 @@ Each lead card gains:
 - Setup wizard shows sales-type dropdown with 35 options from workbook
 - Setting `salesType = "Tech / SaaS / IT"` and re-running produces leads in healthcare/financial verticals (per workbook), not real estate
 
+### Phase 2.5 — Real business discovery via Google Places API
+
+**Problem confirmed (2026-05-12):** Codex's Phase 2 vertical fetcher uses DuckDuckGo HTML search via `findVerticalLeadCandidates(query)` to discover companies. DDG returns articles/directories/ads, not company directories. Almost no candidates survive extraction. Result: 0 vertical leads, daily list is empty when news doesn't produce.
+
+**Fix:** replace DDG-based vertical discovery with **Google Places API (New)**. Authoritative, structured, returns name+address+phone+website per company. Free tier covers a customer's daily usage with margin.
+
+#### Architecture
+
+1. **Customer setup adds Google Places API key field.**
+   - In setup wizard, add a section: "Lead discovery API key (Google Places)". Customer creates a Google Cloud project, enables Places API (New), generates an API key, pastes it in.
+   - Wizard shows a one-paragraph "how to get this" tooltip with a link to https://console.cloud.google.com/apis/library/places.googleapis.com
+   - Stored in `profile.json` as `profile.googlePlacesApiKey`.
+   - SCALABILITY: in production this routes through the boola backend broker (one shared key, billing per customer). Mark with `// SCALABILITY:` comment.
+   - For Alena's current dev install: she generates her own key once.
+
+2. **New IPC handler `places-discover` in `main.js`:**
+   - Input: `{vertical, region, radiusMiles, count}` (vertical from workbook `Master_B2B_Lead_Rules`, region from profile)
+   - Maps vertical → Google Places `includedTypes` via a mapping table (see workbook → can be a new column or hardcoded mapping in code initially):
+     - "property manager" → `["real_estate_agency","property_management_company"]`
+     - "construction GC" → `["general_contractor"]`
+     - "restaurant" → `["restaurant"]`
+     - "law office" → `["lawyer"]`
+     - "medical office" → `["doctor","medical_lab","dental_clinic","veterinary_care"]`
+     - "hotel" → `["lodging"]`
+     - "retail" → `["clothing_store","shoe_store","store"]` (curated subset)
+     - "school" → `["school","primary_school","secondary_school","university"]`
+     - "warehouse" → `["warehouse","wholesaler"]`
+     - "apartment complex" → `["apartment_complex","real_estate_agency"]`
+   - Calls Google Places API (New) `places:searchNearby` endpoint:
+     ```
+     POST https://places.googleapis.com/v1/places:searchNearby
+     X-Goog-Api-Key: {key}
+     X-Goog-FieldMask: places.id,places.displayName,places.formattedAddress,
+                       places.internationalPhoneNumber,places.nationalPhoneNumber,
+                       places.websiteUri,places.businessStatus,
+                       places.userRatingCount,places.types,places.primaryType
+     Body:
+     {
+       "includedTypes": [...],
+       "maxResultCount": 20,
+       "locationRestriction": {
+         "circle": {
+           "center": {"latitude": <lat>, "longitude": <lng>},
+           "radius": <radiusMeters>
+         }
+       }
+     }
+     ```
+   - Returns array of `{name, address, phone, website, googlePlaceId, userRatingCount, primaryType, types[]}`.
+
+3. **Chain / franchise filter.**
+   - Reject obvious chains. Maintain a `CHAIN_BLOCKLIST` in `main.js`:
+     - Property: Equity Residential, AvalonBay, Greystar, Camden, Aimco, Related Companies, Brookfield, Tishman Speyer, Vornado
+     - Hotels: Marriott, Hilton, Hyatt, IHG, Wyndham, Best Western, Hampton Inn, Holiday Inn, Sheraton
+     - Restaurants: Starbucks, McDonald's, Subway, Chipotle, Sweetgreen, Shake Shack, Panera, Chick-fil-A
+     - Retail: Walmart, Target, Whole Foods, Trader Joe's, CVS, Walgreens, Duane Reade, 7-Eleven, Macy's, Nordstrom, Saks
+     - Generic: any name matching `/^(?:the )?(.*?) (?:inc|llc|corp|holdings)$/` where it appears 3+ times in last 30 days (auto-learned chain)
+   - Reject if `places.types` includes `chain_locality` or if name matches blocklist.
+   - SCALABILITY: blocklist eventually moves to workbook so customers can edit per market.
+
+4. **Mid-size detection heuristic.**
+   - Sweet spot: `userRatingCount` between **5 and 500**. <5 = too small/possibly fake. >500 = chain or franchise.
+   - For B2B-only verticals (property management, law) drop the upper bound — established firms can have many reviews.
+   - Add `sizeBucket: 'micro' | 'mid' | 'large'` to each lead based on rating count. Show mid-size first.
+
+5. **Daily rotation — never show the same lead twice within 14 days.**
+   - On each `places-discover` call: fetch top 50 per vertical from Google.
+   - Filter through 14-day exclusion list (already specced as `lead-history.json`).
+   - Of the remaining pool, **shuffle deterministically using `Date.now() / 86400000` as seed** so same day = same order, different day = different shuffle.
+   - Take the first N. Stable per-day, fresh day-over-day.
+
+6. **Geocoding the region.**
+   - Profile has `region.label` like "New York City". Need `(latitude, longitude)` for Places.
+   - Add a small static mapping of common metros, OR call Google Geocoding API (also free tier) on first save to resolve region → coordinates. Cache lat/lng in profile.
+   - For unknown region: prompt user during setup to confirm "Use New York City coordinates? [yes / change]".
+
+7. **Replace DDG path in `fetchVerticalLeadsCore`.**
+   - Drop `findVerticalLeadCandidates(query)` for vertical-bucket leads.
+   - News bucket (T26-onward) still uses RSS+DOB+311 — unchanged.
+   - Seasonal bucket uses the same Places infrastructure with different vertical inputs.
+
+8. **Fallback chain when Places key is missing or quota exceeded.**
+   - If no `googlePlacesApiKey` set: skip vertical bucket entirely, show banner "Add a Google Places API key in Settings to unlock vertical leads."
+   - If quota exceeded (HTTP 429): retry with exponential backoff up to 3x, then degrade to existing DDG path with banner "Google Places quota hit; using fallback search."
+
+#### Cost projection (per customer, daily 10-lead generation)
+
+| Source | Calls/day | Cost |
+|---|---|---|
+| Nearby search (3 verticals × 1 call each) | 3 | $0.017 × 3 = $0.05 |
+| Place details on top 10 of pool | 10 | $0.017 × 10 = $0.17 |
+| **Daily total** | 13 | **$0.22** |
+| **Monthly** | ~400 | **$6.60** |
+
+Well within free tier ($200/mo credit) per customer.
+
+#### Acceptance
+
+- Open Settings → enter a valid Google Places key → save
+- Tap ↻ on Leads tab → 7-10 vertical leads appear, ALL with phone + address + website
+- None are obvious chains (no Marriott, no Whole Foods, no Equity Residential)
+- Tap ↻ again next day → at least 6 of 10 leads differ from previous day
+- `~/Projects/boola/.boola_lead_history.json` shows last 14 days of names
+
 ### Phase 3 (after Phase 2 verified)
 
 - Cold email pane upgrade: when user has selected a lead, "Generate" pulls workbook subject_line_styles + opener_templates + objection_responses for that vertical. Currently `EMAIL_TYPE_GUIDE` is hardcoded; replace with workbook lookup.
