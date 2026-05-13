@@ -486,3 +486,10 @@ Well within free tier ($200/mo credit) per customer.
 
 - Cold email pane upgrade: when user has selected a lead, "Generate" pulls workbook subject_line_styles + opener_templates + objection_responses for that vertical. Currently `EMAIL_TYPE_GUIDE` is hardcoded; replace with workbook lookup.
 - Manager-tier upgrade: per-rep analytics dashboard reading lead-touch logs.
+
+## 2026-05-13 UI: single-column lead popup (Alena ask)
+
+- Removed the "Target Titles" column from the daily-leads popup (`prospect.html` `renderList`). Buyer titles still surface inline on each lead card via `suggestedBuyer` field.
+- Single column now spans full popup width.
+- Up to 10 leads visible (was 5 per column).
+- Each card now shows: #, name, confidence badge (green pill), why-now, phone (cyan), vertical · suggested buyer.
