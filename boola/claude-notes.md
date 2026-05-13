@@ -39,6 +39,14 @@ Boola is sold to **any B2B seller anywhere selling anything.** Junk removal in N
 
 **Litmus test:** before merging any task, mentally swap the customer to "medical device rep in Phoenix." If the feature breaks or needs special handling, the implementation is wrong.
 
+## Canonical mascot emote sheet (2026-05-13)
+
+The visual identity is fixed. There are exactly **13 approved Boola emotes**:
+
+1. Happy · 2. Excited · 3. Thinking · 4. Focused · 5. Surprised · 6. Frustrated · 7. Decision (📧✅/📧❌) · 8. Celebrating · 9. Tired · 10. Cooking Money · 11. Thinking (Headset) · 12. Cool · 13. Boola (Relaxed)
+
+PNG files live at `~/Projects/boola/mascot-emotes/<state>.png`. Any code that sets a Boola expression must reference one of these 13 names — never invent a new variant. If a feature needs a state that doesn't fit one of the 13, flag it to Alena before writing code; do not improvise.
+
 ## Mascot is the product — non-negotiable
 
 Boola IS the floating whale in the corner. The mascot is not optional, not a launcher, not a header avatar. It must be:
