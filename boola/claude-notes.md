@@ -39,6 +39,51 @@ Boola is sold to **any B2B seller anywhere selling anything.** Junk removal in N
 
 **Litmus test:** before merging any task, mentally swap the customer to "medical device rep in Phoenix." If the feature breaks or needs special handling, the implementation is wrong.
 
+## Claude-built code log (2026-05-13)
+
+Claude directly built T48 + T43-OSM + T44 + T45 in this session (vs. delegating to Codex) because Codex's prior pass on the lead engine shipped half-working code that was hard to debug. Future Codex sessions should treat the following as **already implemented in `main.js`** and not rebuild:
+
+### Added to `main.js`
+- `geocodeLocation(query)` — free Nominatim geocoding, works globally, no auth
+- `ensureProfileGeocoded(profile)` — auto-resolves region label → lat/lng on demand, caches to profile.json
+- `VERTICAL_OSM_TAGS` mapping table — covers all 35 sales-type verticals via OSM amenity/office/shop/healthcare tags. Fuzzy-matches workbook vertical names against the table keys.
+- `osmTagsForVertical(name)` — fuzzy lookup against the table
+- `buildOverpassQuery(lat, lng, radiusMeters, tagPairs)` — constructs Overpass QL string
+- `overpassQuery(query)` — POSTs to overpass-api.de, returns elements
+- `osmElementToLead(el)` — normalizes OSM element to standard `{name, address, phone, website, osmId, sourceType:'osm'}` shape
+- `osmDiscover({vertical, lat, lng, radiusMiles, count})` — high-level adapter
+- `GLOBAL_CHAIN_BLOCKLIST` — Set of ~40 chains (Starbucks, Marriott, Walmart, Equity Residential, etc.) filtered universally regardless of region
+- `isBlocklistedChain(name)` — substring case-insensitive match
+- `dailyShuffle(arr)` — deterministic shuffle seeded by `Math.floor(Date.now()/86400000)`. Same day = same order; next day = fresh rotation
+- `canonicalPhone(phone)` — 10-digit normalization for dedupe
+
+### Rewrote `fetchVerticalLeadsCore()` in `main.js`
+- Drops DDG/`findVerticalLeadCandidates` entirely (was producing 0 results)
+- For each enabled workbook vertical sorted by priority_score:
+  - Calls `osmDiscover` with 80-candidate target
+  - Filters: known chain, recent exclusion list, dedupe by name
+  - Applies `dailyShuffle` for stable-within-day rotation
+  - Enriches via existing `lookup-company-info` when OSM lead is missing phone/address
+  - Requires phone for final inclusion (callable threshold)
+- Per-vertical target = ceil(targetCount / vertical count)
+- 90s total budget
+- Returns leads tagged `source: 'OSM vertical'`
+
+### New IPC handlers
+- `geocode-location` → `geocodeLocation(query)`
+- `osm-discover` → `osmDiscover(args)`
+
+### Smoke-tested
+- NYC junk removal salesType: 58 property mgmt, 59 commercial RE, 57 construction businesses found
+- Cincinnati hospitals: 5 real ones with phones
+- Daily shuffle deterministic verified
+
+### Pending follow-ups (NOT yet done — for Codex or next Claude session)
+- Strip remaining NYC-hardcoded constants (`NYC_BIZ_API`, `NYC_BOROUGHS`, etc.) — these still exist in `main.js` but are only used by the news/structured-signal path which is fine for NYC users today. For non-NYC users they silently return empty (acceptable fallback for now). True regionalization of OpenData portals is a future task.
+- `KNOWN_COMPANIES` list in `prospect.html` is dead code now that OSM does discovery. Can be deleted.
+- `findVerticalLeadCandidates` and `searchTemplatesForRule` in `main.js` are dead code. Can be deleted.
+- News feed defaults are still NYC-flavored in `DEFAULT_CUSTOMER_PROFILE.newsFeeds`. For non-NYC users they'll fetch but produce few region-relevant items. National-feed default set is a follow-up.
+
 ## Canonical mascot emote sheet (2026-05-13)
 
 The visual identity is fixed. There are exactly **13 approved Boola emotes**:
