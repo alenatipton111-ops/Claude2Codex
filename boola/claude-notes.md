@@ -493,3 +493,11 @@ Well within free tier ($200/mo credit) per customer.
 - Single column now spans full popup width.
 - Up to 10 leads visible (was 5 per column).
 - Each card now shows: #, name, confidence badge (green pill), why-now, phone (cyan), vertical · suggested buyer.
+
+## 2026-05-15 single-instance lock (Alena ask)
+
+Symptom: 8 AM LaunchAgent fires every morning and stacks more boola processes. After 5 days = 5 instances.
+
+Fix in `main.js`: wrapped `app.whenReady()` and all top-level lifecycle handlers in `app.requestSingleInstanceLock()`. If a second launch is attempted, it logs "another instance is already running — exiting" and quits. The existing instance receives a `second-instance` event and brings its mascot/chat windows forward.
+
+Tested: ran two consecutive `electron .` launches. First spawned full process set; second exited immediately with the expected log message. No new processes from the second attempt.
