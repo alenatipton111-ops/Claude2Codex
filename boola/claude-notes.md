@@ -6,8 +6,8 @@ _Architecture, plans, specs, edge cases. Codex reads this; Codex does not edit i
 
 ## Standing context (from ~/.claude/CLAUDE.md)
 
-- **Canonical project folder (single source of truth):** `/Users/alenatipton/Projects/boola/`
-- The 8 AM `LaunchAgent` runs from here. Edits land here directly — no Desktop/Projects sync step anymore (Desktop folder retired 2026-05-11).
+- **Canonical project folder (single source of truth):** `/Users/alenatipton/BOOLA/`
+- The 8 AM `LaunchAgent` runs from here. Edits land here directly — no Desktop/Projects sync step anymore (Desktop folder retired 2026-05-11; `~/Projects/boola/` folder retired 2026-05-18, contents relocated to `~/BOOLA/`).
 - **Hard rule:** every new feature must work for an arbitrary paying customer, not just for Alena. No hardcoded user paths, no plaintext creds, no hardcoded company/territory copy.
 
 ## Known scalability debt (punch list)
@@ -90,7 +90,9 @@ The visual identity is fixed. There are exactly **13 approved Boola emotes**:
 
 1. Happy · 2. Excited · 3. Thinking · 4. Focused · 5. Surprised · 6. Frustrated · 7. Decision (📧✅/📧❌) · 8. Celebrating · 9. Tired · 10. Cooking Money · 11. Thinking (Headset) · 12. Cool · 13. Boola (Relaxed)
 
-PNG files live at `~/Projects/boola/mascot-emotes/<state>.png`. Any code that sets a Boola expression must reference one of these 13 names — never invent a new variant. If a feature needs a state that doesn't fit one of the 13, flag it to Alena before writing code; do not improvise.
+PNG files live at `~/BOOLA/mascot-emotes/<state>.png`. Canonical filenames (use these exact strings in code, including hyphenation): `happy.png`, `excited.png`, `thinking.png`, `focused.png`, `surprised.png`, `frustrated.png`, `decision.png`, `celebrating.png`, `tired.png`, `cooking-money.png`, `thinking-headset.png`, `cool.png`, `relaxed.png`. Any code that sets a Boola expression must reference one of these 13 names — never invent a new variant (no `headset-thinking`, no `holding-email`, no `bored`/`sleeping`/`waving`/`angry` — those are legacy and being replaced). If a canonical PNG is missing on disk, fall back to `thinking.png` or `happy.png` with a one-line console log; never silently fail. If a feature needs a state that doesn't fit one of the 13, flag it to Alena before writing code; do not improvise.
+
+**Art status (as of 2026-05-18):** Canonical art exists as a combined sheet (provided by Alena 2026-05-18 — see `Boola-13-Emote-Sheet.png` reference). Individual transparent-bg PNGs at canonical filenames have NOT yet been generated. The legacy PNGs currently in `mascot-emotes/` (`waving.png`, `angry.png`, `sleeping.png`, `confused.png`, `email-reject.png`, `throwing-money.png`, `open-mouth.png`, `swimming.png`, `base.png`) DO NOT match canonical names. Code must still reference canonical names — fallback logic (above) will route to `thinking.png` / `happy.png` until canonical PNGs land. Do not rename or repurpose the legacy files; they will be deleted when canonical art arrives.
 
 ## Mascot is the product — non-negotiable
 
@@ -480,7 +482,7 @@ Well within free tier ($200/mo credit) per customer.
 - Tap ↻ on Leads tab → 7-10 vertical leads appear, ALL with phone + address + website
 - None are obvious chains (no Marriott, no Whole Foods, no Equity Residential)
 - Tap ↻ again next day → at least 6 of 10 leads differ from previous day
-- `~/Projects/boola/.boola_lead_history.json` shows last 14 days of names
+- `~/BOOLA/.boola_lead_history.json` (or under `app.getPath('userData')`) shows last 14 days of names
 
 ### Phase 3 (after Phase 2 verified)
 

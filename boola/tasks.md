@@ -29,7 +29,7 @@
   6. Confirm UI shows ✓ badges
   7. Record findings in `codex-notes.md`
 
-- [x] [claude→codex] **T11: Sync to project folder** — after T10 passes, copy edited files (`prospect.html`, `main.js`, `chat.html`) from `~/Projects/boola/` to `~/Projects/boola/`.
+- [x] [claude→codex] **T11: Sync to project folder** — _obsolete as of 2026-05-18: canonical folder is now `~/BOOLA/`, no separate sync step. Leave as `[x]`._
 
 - [ ] [claude→codex] **T12: Acceptance check** — verify each acceptance criterion from `claude-notes.md` § Acceptance criteria. Note any that fail in `codex-notes.md` so Claude can address in the next planning round.
 
@@ -63,7 +63,7 @@ _(Added 2026-04-29 — drop license-based signals, add action-based fetchers, ad
 ## Phase 2 — Workbook-driven lead generation
 _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on `lead-rules.xlsx`. Spec in `claude-notes.md` § Phase 2.)_
 
-- [ ] [claude→codex] **T26: Build `scripts/build-lead-rules.js`.** Reads `~/Projects/boola/lead-rules.xlsx`, emits `~/Projects/boola/lead-rules.json` with all 8 tabs as keyed objects/arrays. Use the `xlsx` or `node-xlsx` npm package (or existing if already in deps). Run once and commit the resulting JSON. Add an `npm run build:lead-rules` script in `package.json`. Goal: zero xlsx parsing at runtime.
+- [ ] [claude→codex] **T26: Build `scripts/build-lead-rules.js`.** Reads `~/BOOLA/lead-rules.xlsx`, emits `~/BOOLA/lead-rules.json` with all 8 tabs as keyed objects/arrays. Use the `xlsx` or `node-xlsx` npm package (or existing if already in deps). Run once and commit the resulting JSON. Add an `npm run build:lead-rules` script in `package.json`. Goal: zero xlsx parsing at runtime.
 
 - [ ] [claude→codex] **T27: Add sales-type + target-verticals to setup wizard.**
   In `setup.html`:
@@ -89,7 +89,7 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 - [ ] [claude→codex] **T31: Rewrite `generateProspects` in `prospect.html`** as the workbook-driven 3-bucket pipeline per `claude-notes.md` § Phase 2 lead-gen pipeline. Acceptance: 10 leads/day, no static fallbackPool, never repeats yesterday's leads (rolling 14-day exclusion).
 
 - [ ] [claude→codex] **T32: Rolling exclusion list.**
-  In `main.js`: maintain `~/Projects/boola/.boola_lead_history.json` (or under `app.getPath('userData')`) with `[{name, date, source}]` entries for last 14 days. Drop entries older than 14 days on each write. `validate-news-lead` and the new vertical/seasonal fetchers must check this file and skip any name already on it. Persist new leads to it after generation.
+  In `main.js`: maintain `~/BOOLA/.boola_lead_history.json` (or under `app.getPath('userData')`) with `[{name, date, source}]` entries for last 14 days. Drop entries older than 14 days on each write. `validate-news-lead` and the new vertical/seasonal fetchers must check this file and skip any name already on it. Persist new leads to it after generation.
 
 - [ ] [claude→codex] **T33: Lead card UI upgrade.**
   In `chat.html` lead rendering: each card gains
@@ -112,7 +112,7 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
   5. Change `salesType` to "Tech / SaaS / IT" → confirm leads now favor healthcare/financial verticals (per workbook priorities) instead of construction/property
   6. Record findings in `codex-notes.md`
 
-- [ ] [claude→codex] **T36: Sync to `~/Projects/boola/`** after T35 passes.
+- [ ] [claude→codex] **T36: Sync to `~/BOOLA/`** after T35 passes.
 
 - [ ] [claude→codex] **T39: Email header + body spacing fidelity end-to-end.**
   Audit every code path that takes a Claude-generated email and exposes it to the user:
@@ -124,6 +124,12 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
 - [ ] [claude→codex] **T40: Document templates with screenshot-based fill.**
   New feature: user uploads `.docx` templates with `{{placeholder}}` markers; boola fills them on demand using known lead data, manual input, or screenshot-extracted data.
+
+  **STEP ZERO (do this first, before any code):**
+  ```bash
+  cd ~/BOOLA && npm install docxtemplater pizzip --save
+  ```
+  Verify `package.json` records both deps and `node_modules/docxtemplater` exists. If the install fails (network, lockfile, etc.), stop and report — do NOT proceed without these packages.
 
   **Dependencies:**
   - `docxtemplater` npm package + `pizzip` (its required peer) — these are the standard Word-mail-merge stack. Preserve fonts, tables, headers/footers, images. Install via `npm install docxtemplater pizzip --save`.
@@ -214,7 +220,7 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
   - Click Download → `.docx` opens in Word with placeholders replaced and original formatting intact.
   - Discount field shows 10/15/20/Custom buttons; selecting one writes "10%" (or whatever) into the doc.
 
-  Sync to `~/Projects/boola/` when done.
+  Sync to `~/BOOLA/` when done.
 
 ## Phase 2.4 — Full regionalization (must happen before Phase 2.5)
 _(Added 2026-05-12 — current code still hardcodes NYC OpenData endpoints, news feeds, chain lists, neighborhood regex. Cincinnati/Boston/SF customers would silently get empty leads. Fix before building Google Places so Places is region-aware from line 1.)_
@@ -359,7 +365,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
      - Confirmation card appears: "📧 Drafted follow-up email for mike@acme.com / 📋 Task added: Follow up in 2 days"
      - Mascot holds-email gesture (or fallback to `excited.png` with console message)
      - Click Send Now → email goes out, mascot celebrates, auto-task is marked replaced when T37's new task gets created
-     - Verify "Pause auto-stop" toggle appears in the call banner during listening (default off — auto-stop is enabled by default)
+     - Verify the **"Pause auto-stop"** toggle appears in the call banner during listening. Default state: toggle OFF, which means auto-stop IS active. Flipping the toggle ON disables auto-stop so the user can talk through end-of-call phrases without boola cutting off.
 
   10. **Mic permission edge case:** revoke mic in System Settings → Privacy → Microphone, click Start Listening. Boola surfaces an explicit error message instead of silently failing.
 
@@ -376,21 +382,21 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
 
   **For each scenario:** mark ✅ pass, ⚠️ partial (what's off), or ❌ fail (what broke). For any ⚠️ or ❌, include the exact reproduction steps and the file/line you suspect.
 
-  Sync any final fixes to `~/Projects/boola/`. When this task is done, Update 5 is complete.
+  Sync any final fixes to `~/BOOLA/`. When this task is done, Update 5 is complete.
 
 - [ ] [claude→codex] **T41: Autonomous call mode — mic listening + email extraction + auto follow-up.**
 
   Current state (audited 2026-05-11): basic Web Speech transcription works; on Start it tries to set `headset` expression but there's no `mascot-emotes/headset.png` so it falls back to `base.png`. No auto-stop, no email extraction from transcript, no auto-task creation. T41 builds the autonomous flow.
 
-  **Mascot states needed (assets):**
-  - **`headset-thinking.png`** — boola wearing black over-ear headphones with thinking face. Used during active listening.
-  - **`holding-email.png`** — boola holding up an envelope. Used after call ends to show "email drafted!" confirmation.
-  - Alena will provide both assets (same generator she used for the rest of `mascot-emotes/`). If they aren't present at code-deploy time, fall back: `headset-thinking` → `thinking.png`, `holding-email` → `excited.png`. No silent failures — log a console message saying "asset missing, using fallback".
-  - Update the expression-mapping table in `chat.html` (lines ~385-400) to include both new keys.
+  **Mascot states needed (assets):** _Updated 2026-05-18 to match the canonical 13-emote sheet in `claude-notes.md` § Canonical mascot emote sheet._
+  - **`thinking-headset.png`** (canonical name — NOT `headset-thinking`) — boola wearing black over-ear headphones with thinking face. Used during active listening. Maps to canonical emote #11 "Thinking (Headset)".
+  - **`decision.png`** (canonical name — NOT `holding-email`) — boola holding 📧✅ and 📧❌ envelopes. Used after call ends to show the "send follow-up?" prompt. Maps to canonical emote #7 "Decision".
+  - As of 2026-05-18, canonical PNGs have not yet been generated at their canonical filenames. If `thinking-headset.png` is missing, fall back to `thinking.png` with a one-line console log. If `decision.png` is missing, fall back to `happy.png` with a one-line console log. No silent failures.
+  - Update the expression-mapping table in `chat.html` (lines ~385-400) to include both canonical keys (`thinking-headset` and `decision`).
 
   **Workflow (replace existing `startCallMode` / `stopCallMode`):**
 
-  1. **User clicks Start Listening** → mascot fires `set-expression: headset-thinking`. Boola is silent and listening.
+  1. **User clicks Start Listening** → mascot fires `set-expression: thinking-headset`. Boola is silent and listening.
 
   2. **Continuous transcription** via Web Speech API (already implemented; verify it actually captures by speaking a known phrase and checking the live transcript element renders it. If it doesn't, surface the macOS mic-permission error explicitly instead of just `console.log`).
 
@@ -424,7 +430,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
        ```
      - If `recipient_email` is non-null, auto-draft a follow-up email using `getEmailExpertSystem` + the existing `EMAIL_TYPE_GUIDE[suggested_email_type]`, with the body referencing `commitment_made` and `rep_pain_points_heard`.
      - Auto-create a follow-up task for **2 days from now** using the existing todo system. Task text: `"Follow up with {recipient_name or recipient_email} — {summary}"`, priority `medium`. Tag the task with `source:'call-auto'` so it's distinguishable from manual todos.
-     - Mascot fires `set-expression: holding-email`. Hold this expression for 4 seconds, then return to `happy`.
+     - Mascot fires `set-expression: decision`. Hold this expression for 4 seconds, then return to `happy`.
 
   6. **Post-call UI in the call pane:**
      - Replace the existing "Callback follow-up detected / Email follow-up detected / Call notes captured" branches with a single result card:
@@ -454,7 +460,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
   - Click Send Now → mascot celebrates, email goes out, task moves to Done.
   - Test mic-permission error path: revoke mic in System Settings → click Start Listening → boola surfaces "Microphone access denied — open System Settings → Privacy → Microphone" instead of silently failing.
 
-  Sync to `~/Projects/boola/` when done.
+  Sync to `~/BOOLA/` when done.
 
 - [ ] [claude→codex] **T38: Todo completion = celebrate + hide from active view.**
   In `chat.html` `toggleTodo(i)`:
@@ -519,7 +525,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
   - Test Mood button still triggers expressions
   - Chat header avatar (added by Codex's last pass) can stay or be removed — Alena's call. Default: keep it; it's nice having the avatar visible inside the chat too.
 
-  Sync to `~/Projects/boola/` when done. Update `codex-notes.md` confirming the rule from `claude-notes.md` § Mascot is the product is now respected.
+  Sync to `~/BOOLA/` when done. Update `codex-notes.md` confirming the rule from `claude-notes.md` § Mascot is the product is now respected.
 
 - [ ] [claude→codex] **T23: Calm down the mascot — kill random animations + idle bouncing.**
   Alena finds the constant float-bouncing distracting and the random "swim to a stage spot, do a silly face, swim back" too disruptive. Make boola stagnant by default. Keep timed task reminder + leads pop-ups (those are window pop-ins, not mascot motion — leave alone).
@@ -549,9 +555,9 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
   - Leads tab still pops at 9:30 AM.
   - Clicking "🎭 Test Mood" in chat still triggers a one-off expression change (mascot face changes, no movement to a stage).
 
-  Sync to `~/Projects/boola/` when done.
+  Sync to `~/BOOLA/` when done.
 
-- [ ] [claude→codex] **T22: Mascot + brand identity redesign.**
+- [ ] **T22: Mascot + brand identity redesign.** _DEFERRED 2026-05-18 — superseded by the canonical 13-emote sheet (see `claude-notes.md` § Canonical mascot emote sheet). The original brief at `~/Downloads/boola_mascot_redesign_brief_for_codex.md` is not on this Mac and is no longer the source of truth. Do NOT work T22 in Update 5. Mascot art is handled separately by Alena generating 13 transparent-bg PNGs at canonical filenames._
   Read the design brief at **`~/Downloads/boola_mascot_redesign_brief_for_codex.md`** — that's the canonical visual spec. Then read `claude-notes.md` § Mascot redesign for boola-specific implementation requirements (existing expression system, animation hooks, wordmark application, dock icon, etc.).
   Files to touch:
   - `mascot.html` — replace existing SVG with new baby-shark design; preserve `swim` keyframe + `set-expression` IPC handler with expression variants (`happy`, `thinking`, `excited`, `headset`, `celebrate`, `sleepy` minimum).
@@ -564,14 +570,14 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
   - Leads pop-up still shows the whale swimming up holding the scroll, in new style.
   - Setup wizard shows the branded wordmark.
   - macOS dock icon shows the new mark when boola is running.
-  Sync to `~/Projects/boola/` when done.
+  Sync to `~/BOOLA/` when done.
 
 - [ ] [claude→codex] **T21: Remove API key field from setup wizard** per `claude-notes.md` § Anthropic API key. Specifically:
   1. Delete the "Anthropic API key" label, input, and any related form code from `setup.html`.
   2. Drop `apiKey` from the saved `profile.json` schema (don't write it; ignore on read).
   3. Continue loading the key from `~/.boola_key` silently in `chat.html` and anywhere else it's used. If `~/.boola_key` is missing, log to console and degrade gracefully (chat shows "Boola is offline — admin setup required" instead of asking the customer for a key).
   4. Add `// SCALABILITY: route through boola backend in production` comment at every `fetch('https://api.anthropic.com/v1/...')` call site in `chat.html` and any other file.
-  5. Sync to `~/Projects/boola/`.
+  5. Sync to `~/BOOLA/`.
 
 - [ ] [claude→codex] **T19: Smoke test the new pipeline.**
   1. Delete `app.getPath('userData')/profile.json` if present
@@ -582,7 +588,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
   6. Open Settings → uncheck `illegal-dumping` → save → tap ↻ — confirm no dumping leads appear
   7. Record findings in `codex-notes.md`
 
-- [x] [claude→codex] **T20: Sync to project folder** — `~/Projects/boola/` → `~/Projects/boola/` for all edited/added files.
+- [x] [claude→codex] **T20: Sync to project folder** — _obsolete as of 2026-05-18: canonical folder is now `~/BOOLA/`, no separate sync step._
 
 ## Completed
 
@@ -592,17 +598,17 @@ _(none yet)_
 
 - [ ] [codex→claude] **Review latest Boola mascot/emote work in Claude Code.**
   Open the live app folder in Claude Code:
-  `cd /Users/alenatipton/Projects/boola && claude`
+  `cd /Users/alenatipton/BOOLA && claude`
 
   Context:
   - Codex removed the floating always-on-top mascot window from normal startup so Boola no longer floats around the desktop.
-  - Codex launched the updated app from `~/Projects/boola/`.
+  - Codex launched the updated app from `~/BOOLA/`.
   - Codex replaced the old hand-drawn/SVG mascot rendering with approved image-backed assets from:
     - `~/Downloads/Boola Mas.png`
     - `~/Downloads/Boola Expressions.png`
   - New assets live in:
-    - `~/Projects/boola/mascot-emotes/`
-    - synced copy: `~/Projects/boola/mascot-emotes/`
+    - `~/BOOLA/mascot-emotes/`
+    - synced copy: `~/BOOLA/mascot-emotes/`
   - Implemented emote files:
     `base.png`, `open-mouth.png`, `throwing-money.png`, `swimming.png`, `thinking.png`, `confused.png`, `cooking-money.png`, `email-reject.png`, `angry.png`, `waving.png`, `excited.png`, `sleeping.png`
   - Updated `main.js` so `set-expression`, thinking, and celebrate events update the visible chat header avatar now that the floating mascot is off.
@@ -615,4 +621,4 @@ _(none yet)_
   - Confirm the header avatar expression swaps are acceptable UX now that the floating mascot is disabled.
   - Confirm whether T22 and T23 should be marked complete, partially complete, or rewritten around the new asset-backed mascot system.
   - If Claude wants to run the app manually, use:
-    `cd /Users/alenatipton/Projects/boola && npx electron .`
+    `cd /Users/alenatipton/BOOLA && npx electron .`
