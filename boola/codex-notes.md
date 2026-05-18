@@ -15,6 +15,25 @@ _Implementation notes, file-level changes, test output, debugging. Claude reads 
 ## Recent implementations
 _(Codex fills this in after each task — newest at top)_
 
+## 2026-05-18T16:06:00-05:00 - T46 verification gate for T26-T32
+
+### Verified
+- T26: `npm run build:lead-rules` passed in `/Users/alenatipton/BOOLA` and rebuilt `lead-rules.json` from `lead-rules.xlsx` with all 8 workbook tabs. Row counts: Master_B2B_Lead_Rules 105, Bot_Instructions 18, Sources 42, Category_Summary 35, Cold_Email_Rules 46, Regional_Source_Rules 55, Source_Routing_Logic 12, Source_Scoring_Rules 9.
+- T27: Hidden Electron setup harness loaded `setup.html`; Sales type dropdown rendered 35 options from `lead-rules.json`. Changing to `tech_sales_saas_it` dynamically redrew target vertical checkboxes to healthcare & life sciences, financial services & insurance, and professional services / legal / accounting.
+- T28: `rg -n "fallbackPool" prospect.html` returned zero matches.
+- T29-T31: Live Electron harness triggered the actual prospect window `start-prospect` flow. After fixes below, the pipeline produced 10 callable leads with phone numbers, verticals, confidence scores, and why-now text in about 73 seconds. The list came from the workbook/OSM vertical path and did not use any static fallback.
+- T32: `/Users/alenatipton/Library/Application Support/boola/.boola_lead_history.json` exists and is appended by `leads-ready`. Consecutive forced-regeneration runs skipped prior names and appended different OSM vertical leads, confirming the rolling exclusion is enforced.
+
+### Fixes made during verification
+- `prospect.html`: allowed Bucket 2 vertical leads to backfill all the way to 10 when news/seasonal buckets are dry; capped weak news/structured validation batches so bad candidates do not consume the whole refresh budget.
+- `main.js`: stopped doing slow lookup enrichment for OSM vertical candidates that only lacked address. Vertical leads require a phone; candidates without a phone are skipped instead of blocking the queue.
+
+### Test output
+- `node --check main.js` passed.
+- `node --check scripts/build-lead-rules.js` passed.
+- Extracted script blocks from `prospect.html`, `setup.html`, `chat.html`, and `mascot.html` compiled with `vm.Script`.
+- Live T46 lead harness report: 10 leads, 10 callable, 10 with vertical, 10 with confidence, 10 with why-now.
+
 ## 2026-04-30T13:06:11.521Z - Phase 1 / Phase 1.5 implementation batch
 
 ### Implemented
