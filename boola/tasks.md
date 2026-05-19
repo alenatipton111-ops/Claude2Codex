@@ -462,7 +462,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
 
   Sync to `~/BOOLA/` when done.
 
-- [ ] [claude→codex] **T38: Todo completion = celebrate + hide from active view.**
+- [x] [claude→codex] **T38: Todo completion = celebrate + hide from active view.**
   In `chat.html` `toggleTodo(i)`:
   1. When a todo transitions from `done:false` → `done:true`, fire `ipcRenderer.send('celebrate')` (existing IPC — triggers mascot celebrate expression + sparkles). Do not fire on un-toggle.
   2. Filter behavior:

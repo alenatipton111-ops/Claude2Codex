@@ -15,6 +15,24 @@ _Implementation notes, file-level changes, test output, debugging. Claude reads 
 ## Recent implementations
 _(Codex fills this in after each task — newest at top)_
 
+## 2026-05-19T00:00:00-05:00 - T38 todo completion behavior
+
+### Implemented
+- Renamed the default task filter label from `All` to `Open`.
+- Open/Active/High filters now hide completed todos; Done shows only completed todos.
+- Completing a todo sets `completedAt`, fires the existing `celebrate` IPC once, and animates the item out over 350ms before re-rendering.
+- Done view shows `✓ completed {relative time}` under each completed task.
+- Unchecking a Done item clears `completedAt`, returns it to Open, and does not fire celebrate.
+
+### Test output
+- Hidden Electron todo harness verified:
+  - Open view did not show an already-completed item.
+  - Completing a todo set `completedAt`, hid it from Open after the slide-out, and added it to Done with timestamp text.
+  - Unchecking from Done returned it to Open and cleared `completedAt`.
+  - `celebrate` IPC fired exactly once.
+- `node --check main.js` passed.
+- Extracted script blocks from `prospect.html`, `setup.html`, `chat.html`, and `mascot.html` compiled with `vm.Script`.
+
 ## 2026-05-19T00:00:00-05:00 - T37 auto-task on email send
 
 ### Implemented
