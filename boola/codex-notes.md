@@ -15,6 +15,28 @@ _Implementation notes, file-level changes, test output, debugging. Claude reads 
 ## Recent implementations
 _(Codex fills this in after each task — newest at top)_
 
+## 2026-05-19T00:00:00-05:00 - T37 auto-task on email send
+
+### Implemented
+- `main.js`: added `sent-emails.json` storage under `app.getPath('userData')`, ledger helpers, `sent-emails-load`, and `sent-email-link-task` IPC.
+- `main.js`: `send-email` now accepts `{to, subject, body, type, leadId}` and, after a successful nodemailer send, appends a ledger entry with `sentAt`, `followUpDate`, and `taskId:''`.
+- `chat.html`: Send buttons now route through `send-email` IPC instead of opening a Gmail compose URL.
+- `chat.html`: after successful send, Boola creates the next follow-up todo with the correct due-date cadence, links the task id back onto the sent-email ledger, shows a dismissable toast, and refreshes the Sent emails history panel inside Tasks.
+- `chat.html`: kept `won` as no-follow-up-task behavior.
+
+### Test output
+- Hidden Electron send harness mocked a successful `send-email` response and verified:
+  - todo created: `Follow up with Mike re: Acme cleanup`
+  - due date for cold email was +3 days
+  - ledger entry kept `to`, `subject`, `type`, `sentAt`, `leadId`, `followUpDate`
+  - `sent-email-link-task` received the generated task id
+  - toast text and Sent emails history rendered
+- `node --check main.js` passed.
+- Extracted script blocks from `prospect.html`, `setup.html`, `chat.html`, and `mascot.html` compiled with `vm.Script`.
+
+### Deferred
+- Real send/recipient verification is deferred per Update 5 instructions because Gmail OAuth is not set up on this Mac.
+
 ## 2026-05-19T00:00:00-05:00 - T33 lead card UI upgrade
 
 ### Implemented

@@ -476,7 +476,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
   5. Done view shows completion timestamp under each task. Add `completedAt` to the todo schema when marking done. Show as "✓ completed {relative time}" — e.g. "✓ completed 2h ago".
   Acceptance: check off a todo → mascot celebrates → item slides out → reappears in Done tab with timestamp. Un-toggle from Done tab → item returns to Open tab, no celebrate.
 
-- [ ] [claude→codex] **T37: Auto-task on email send.**
+- [x] [claude→codex] **T37: Auto-task on email send.** _Code complete 2026-05-19; real Gmail send-test deferred because OAuth is not set up on this Mac._
   After `send-email` IPC succeeds, automatically:
   1. Append entry to `~/Library/Application Support/boola/sent-emails.json`: `{to, subject, type, sentAt, leadId?, taskId?}`
   2. Compute follow-up date based on email `type`:
