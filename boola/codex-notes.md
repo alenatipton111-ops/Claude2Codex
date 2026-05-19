@@ -15,6 +15,29 @@ _Implementation notes, file-level changes, test output, debugging. Claude reads 
 ## Recent implementations
 _(Codex fills this in after each task — newest at top)_
 
+## 2026-05-19T00:00:00-05:00 - T40 document templates with screenshot-based fill
+
+### Implemented
+- Verified `docxtemplater` and `pizzip` are installed and recorded in `~/BOOLA/package.json`; `node_modules/docxtemplater` exists.
+- Added document-template storage and IPC in `~/BOOLA/main.js`: `template-list`, `template-scan-placeholders`, `template-add`, `template-update`, `template-remove`, `template-fill`, and `template-open-file`.
+- Templates are copied into `app.getPath('userData')/templates/<uuid>.docx`; metadata persists in `app.getPath('userData')/templates.json` with `placeholders`, `fieldConfig`, names, and timestamps.
+- Placeholder scanning detects `{{placeholder}}` tokens from Word XML. Fill uses docxtemplater with `{{` / `}}` delimiters and preserves the original docx package/formatting.
+- Extended setup wizard with Rep info fields (`rep.name`, `rep.email`, `rep.phone`, `rep.title`) and a Document templates section. Unknown placeholders expose inline configuration for free text, dropdown, number, date, currency, or alias-to-lead-field mapping.
+- Added a Documents tab in `chat.html` after Tasks. It lists saved templates, opens a fill panel, supports Lead/Screenshot/Manual modes, pre-fills lead/profile fields, renders discount preset buttons, date/number/currency/dropdown widgets, and generates filled `.docx` files.
+- Added screenshot extraction plumbing through `callClaude` image content blocks using the requested JSON-only extraction prompt and a `// SCALABILITY:` comment for future backend routing.
+- Added document email handoff: generated docs can populate the Email pane with an attachment payload, and `send-email` now accepts nodemailer attachments.
+
+### Test output
+- `npm ls docxtemplater pizzip --depth=0` passed; `node_modules/docxtemplater` is present.
+- `node --check ~/BOOLA/main.js` passed.
+- Extracted script blocks from `setup.html`, `chat.html`, and `mascot.html` compiled with `vm.Script`.
+- Hidden setup harness `t40-setup-harness.js` verified rep info prefill, template card rendering, unknown placeholder config row, dropdown option UI, and `template-update` payload persistence.
+- Hidden docs harness `t40-docs-harness.js` verified Documents tab list rendering, fill panel opening, lead-data prefill (`name`, `job_address`), discount preset value, dropdown custom field, screenshot extraction plumbing with mocked Claude JSON, `.docx` generation, no unreplaced `{{...}}` tokens, and email attachment draft payload.
+
+### Deferred / notes
+- Live Gmail attachment sending is deferred because Gmail OAuth is not set up on this Mac.
+- Screenshot extraction was tested with a mocked Claude JSON response in the harness; the live vision call path is code complete but will depend on Alena's configured Anthropic key and normal API availability.
+
 ## 2026-05-19T00:00:00-05:00 - T41 autonomous call mode
 
 ### Implemented

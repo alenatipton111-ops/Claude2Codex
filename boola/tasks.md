@@ -122,7 +122,7 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
   4. Generated subject line is auto-routed to the email's actual Subject header — not buried in the body. Currently the email-pane result shows both subject+body in one text block. Add a small read-only subject field above the body when result renders, so it's visually clear which line becomes the Subject header.
   5. Acceptance: draft an after-call email, click Copy, paste into a fresh Gmail compose → paragraphs preserved, subject lands in subject row. Send via boola → recipient receives well-formatted email with paragraphs (verify in own inbox).
 
-- [ ] [claude→codex] **T40: Document templates with screenshot-based fill.**
+- [x] [claude→codex] **T40: Document templates with screenshot-based fill.** _Code complete 2026-05-19; live Gmail attachment send deferred because OAuth is not set up on this Mac._
   New feature: user uploads `.docx` templates with `{{placeholder}}` markers; boola fills them on demand using known lead data, manual input, or screenshot-extracted data.
 
   **STEP ZERO (do this first, before any code):**
