@@ -91,7 +91,7 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 - [x] [claude→codex] **T32: Rolling exclusion list.**
   In `main.js`: maintain `~/BOOLA/.boola_lead_history.json` (or under `app.getPath('userData')`) with `[{name, date, source}]` entries for last 14 days. Drop entries older than 14 days on each write. `validate-news-lead` and the new vertical/seasonal fetchers must check this file and skip any name already on it. Persist new leads to it after generation.
 
-- [ ] [claude→codex] **T33: Lead card UI upgrade.**
+- [x] [claude→codex] **T33: Lead card UI upgrade.**
   In `chat.html` lead rendering: each card gains
   - Vertical chip (purple pill)
   - Confidence score (1-100, computed via workbook `Source_Scoring_Rules`, color: ≥85 green / 70-84 yellow / <70 red)

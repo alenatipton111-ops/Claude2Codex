@@ -15,6 +15,20 @@ _Implementation notes, file-level changes, test output, debugging. Claude reads 
 ## Recent implementations
 _(Codex fills this in after each task — newest at top)_
 
+## 2026-05-19T00:00:00-05:00 - T33 lead card UI upgrade
+
+### Implemented
+- Updated `chat.html` lead ingestion to preserve workbook metadata instead of discarding it and re-guessing verticals only from regexes.
+- Lead cards now show workbook vertical, confidence chip with green/yellow/red classes, why-now text, suggested buyer, and source chip.
+- Expanded lead details now show why-now, suggested buyer, source link, phone/address validation badges, and the existing LinkedIn/ZoomInfo actions.
+- Added a `📧 Cold email` quick action on each lead. It pre-fills the Email pane with context, builds a subject/body from workbook `Cold_Email_Rules`, stores the raw subject/body on the result element, and shows the draft in the Email pane.
+
+### Test output
+- `node --check main.js` passed.
+- Extracted script blocks from `prospect.html`, `setup.html`, `chat.html`, and `mascot.html` compiled with `vm.Script`.
+- Hidden Electron `chat.html` harness injected a sample workbook lead, expanded it, and verified vertical chip, confidence chip, why-now, suggested buyer, source chip, and Cold email button render.
+- Same harness clicked Cold email and verified the Email pane became active with raw subject/body plus workbook context populated.
+
 ## 2026-05-18T16:06:00-05:00 - T46 verification gate for T26-T32
 
 ### Verified
