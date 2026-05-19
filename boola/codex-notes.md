@@ -15,6 +15,24 @@ _Implementation notes, file-level changes, test output, debugging. Claude reads 
 ## Recent implementations
 _(Codex fills this in after each task — newest at top)_
 
+## 2026-05-19T00:00:00-05:00 - T39 email subject/body fidelity
+
+### Implemented
+- Added robust `parseEmailDraft()` in `chat.html` for `Subject:` prefix, missing blank line, leading/trailing whitespace, and multi-line subject blocks.
+- Added explicit visible Subject and Body rows for generated email results.
+- Copy now uses raw stored subject/body text instead of rendered DOM text, preserving paragraph `\n` characters.
+- Send now passes `{to, subject, body, type, leadId}` to `send-email` IPC with subject separated from body.
+- `main.js` nodemailer send path now keeps `text: body` and renders `html:` with `<p>` paragraphs rather than only replacing newlines with `<br>`.
+
+### Test output
+- Hidden Electron email harness verified parser behavior for subject-prefixed drafts, missing blank line drafts, and multi-line subject drafts.
+- Harness verified visible subject row, raw clipboard text with paragraph newlines, and `send-email` IPC payload preserving `subject` and raw `body`.
+- `node --check main.js` passed.
+- Extracted script blocks from `prospect.html`, `setup.html`, `chat.html`, and `mascot.html` compiled with `vm.Script`.
+
+### Deferred
+- Real send and recipient inbox verification are deferred per Update 5 instructions because Gmail OAuth is not set up on this Mac.
+
 ## 2026-05-19T00:00:00-05:00 - T38 todo completion behavior
 
 ### Implemented

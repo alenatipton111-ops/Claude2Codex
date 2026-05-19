@@ -114,7 +114,7 @@ _(Added 2026-05-08 — fixes the repeating-leads bug and rebuilds lead engine on
 
 - [ ] [claude→codex] **T36: Sync to `~/BOOLA/`** after T35 passes.
 
-- [ ] [claude→codex] **T39: Email header + body spacing fidelity end-to-end.**
+- [x] [claude→codex] **T39: Email header + body spacing fidelity end-to-end.** _Code complete 2026-05-19; real Gmail send/recipient verification deferred because OAuth is not set up on this Mac._
   Audit every code path that takes a Claude-generated email and exposes it to the user:
   1. `getEmailExpertSystem` already specifies "Subject line first. Then blank line. Then body." Verify the regex/split that parses subject from body in `generateEmail` is robust (handle missing blank line, multi-line subjects, leading/trailing whitespace).
   2. **Copy button** (`copyResult`) — currently copies rendered HTML innerText. Must preserve actual `\n` so pasting into Gmail/Outlook keeps paragraphs intact. Use `navigator.clipboard.writeText` on the raw text, not the rendered DOM text.
