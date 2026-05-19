@@ -15,6 +15,25 @@ _Implementation notes, file-level changes, test output, debugging. Claude reads 
 ## Recent implementations
 _(Codex fills this in after each task — newest at top)_
 
+## 2026-05-19T00:00:00-05:00 - T41 autonomous call mode
+
+### Implemented
+- Replaced the old post-call branching in `~/BOOLA/chat.html` with an autonomous flow: active listening requests canonical `thinking-headset`, final transcript chunks are checked against the T41 end-call phrase regex, and the `Pause auto-stop` toggle disables automatic stopping when checked.
+- Added explicit mic-permission/error UI: `Microphone access denied — open System Settings → Privacy → Microphone`.
+- Added `extractCallContext(transcript)` with the requested Claude JSON extraction prompt and a deterministic fallback that parses spelled emails such as `mike at acme dot com`, recipient names, commitments, follow-up dates, and inferred company names.
+- On stop, Boola switches to `thinking`, creates a medium-priority `source:'call-auto'` task due two days out, drafts a follow-up email when a recipient email is present, then requests canonical `decision` for 4 seconds before returning to `happy`.
+- Added the single post-call result card with Preview Email, Send Now, Edit, and Cancel both actions. Preview/Edit populate the existing Email pane with raw subject/body data; Cancel removes the auto task.
+- Wired T37 integration for both call-card Send Now and Email-pane send: successful send marks the original call auto-task done, stamps `completedAt`, stores `replacedBy: emailId`, and lets T37 create the next follow-up task.
+- Added canonical mascot fallback handling in `chat.html` and `mascot.html`: missing `thinking-headset.png` falls back to `thinking.png`; missing `decision.png` falls back to `happy.png`; missing substitutions log one console line.
+
+### Test output
+- `node --check ~/BOOLA/main.js` passed.
+- Extracted script blocks from `chat.html` and `mascot.html` compiled with `vm.Script`.
+- Hidden Electron harness `t41-call-harness.js` verified end-call phrase auto-stop, deterministic extraction of `mike@acme.com`, call auto-task due `2026-05-21`, draft preview data, mocked Send Now marking the original call task done with `replacedBy`, T37 next-follow-up creation, one celebrate event, and the mic-permission error text.
+
+### Deferred
+- Real Gmail Send Now round-trip is deferred because Gmail OAuth is not set up on this Mac per the Update 5 constraints.
+
 ## 2026-05-19T00:00:00-05:00 - T39 email subject/body fidelity
 
 ### Implemented

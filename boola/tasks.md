@@ -384,7 +384,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
 
   Sync any final fixes to `~/BOOLA/`. When this task is done, Update 5 is complete.
 
-- [ ] [claude→codex] **T41: Autonomous call mode — mic listening + email extraction + auto follow-up.**
+- [x] [claude→codex] **T41: Autonomous call mode — mic listening + email extraction + auto follow-up.** _Code complete 2026-05-19; real Gmail Send Now round-trip deferred because OAuth is not set up on this Mac._
 
   Current state (audited 2026-05-11): basic Web Speech transcription works; on Start it tries to set `headset` expression but there's no `mascot-emotes/headset.png` so it falls back to `base.png`. No auto-stop, no email extraction from transcript, no auto-task creation. T41 builds the autonomous flow.
 
