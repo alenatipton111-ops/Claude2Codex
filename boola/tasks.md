@@ -316,7 +316,7 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
 - [x] [claude→codex] **T46: Re-verify and fix remaining Codex Update 5 tasks.**
   Codex reported done on T26-T32 but failed to mark them complete in `tasks.md`. Confirm each is actually working (especially T32 rolling exclusion — `lead-history.json` should exist and be enforced). Mark them with `[x]` after verifying. Then proceed with the previously-queued T33-T42 in order. **Do not claim completion on a task until you've manually tested its acceptance criteria.**
 
-- [ ] [claude→codex] **T42: Full QA pass — user functionality + bug hunt across Update 5.**
+- [x] [claude→codex] **T42: Full QA pass — user functionality + bug hunt across Update 5.** _QA pass completed 2026-05-19; scenarios with OAuth/T48/product-scope limits are marked partial in `codex-notes.md`._
   After T26-T41 are individually marked done, run a full top-to-bottom user smoke test as if you were Alena using boola for a workday. Don't just check that code compiles — actually exercise every flow and capture what breaks. Report findings in `codex-notes.md` under a `## T42 QA pass` section.
 
   **Run these scenarios in order, document each result:**

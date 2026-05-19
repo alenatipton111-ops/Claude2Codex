@@ -15,6 +15,43 @@ _Implementation notes, file-level changes, test output, debugging. Claude reads 
 ## Recent implementations
 _(Codex fills this in after each task — newest at top)_
 
+## 2026-05-19T00:00:00-05:00 - T42 QA pass
+
+### Summary
+- QA pass completed across Update 5 tasks T26-T33, T37-T41.
+- Marked T42 complete in `tasks.md` with honest partials for Gmail OAuth send round-trips and T48 regionalization residue.
+- One small QA bug was fixed in `~/BOOLA/main.js`: `zoominfo-status` now guards destroyed ZoomInfo windows before reading `webContents`, preventing an `Object has been destroyed` teardown warning seen during harness shutdown.
+
+### Scenario results
+- ✅ Cold install/setup path: `t46-setup-harness.js` verified 35 sales types and dynamic target verticals. T40 setup harness verified Rep info prefill and Document templates configuration UI.
+- ✅ Lead generation: live Electron lead harness generated 10 leads, 10 callable, 10 with verticals, 10 with confidence, and 10 with why-now.
+- ✅ Lead repeat check: after deleting `~/.boola_todays_leads.json`, regenerated lead set had 0/10 overlap with the prior run; rolling exclusion worked.
+- ⚠️ Sales type swap: changing to Tech / SaaS / IT shifted verticals to healthcare and financial services, but returned 8 callable leads rather than 10 because OSM had 0 candidates for `professional services / legal / accounting` in the test run. This is a data-availability partial, not a crash.
+- ⚠️ Email pane: parser/copy/send payload and auto-task creation passed harnesses. Real Gmail send + recipient inbox formatting remains deferred because OAuth is not set up on this Mac.
+- ✅ Todo flow: harness verified completion timestamp, one celebrate event, slide-out from Open, Done visibility, and uncheck returning to Open without a second celebrate.
+- ✅ Documents tab: harness verified template listing, fill dialog, lead-data prefill, discount preset, dropdown custom field, screenshot extraction plumbing with mocked Claude JSON, `.docx` generation with no unreplaced `{{...}}`, and email attachment payload.
+- ⚠️ Document screenshot fill: code path is complete and harness-tested with mocked Claude JSON. Live Claude vision extraction was not run because it depends on Alena's local API key/API availability.
+- ⚠️ Call mode: auto-stop, spelled email extraction, auto-task creation, draft card, preview/edit/send-code path, and mic-permission UI passed harnesses. Real Send Now email round-trip remains deferred because OAuth is not set up on this Mac.
+- ✅ Mascot rules touched in Update 5: canonical emote fallback code compiles in both `chat.html` and `mascot.html`; T41 uses `thinking-headset` and `decision` canonical names.
+- ✅ Setup re-entry: settings setup harness loaded current profile values and template metadata.
+
+### Test output
+- `node --check ~/BOOLA/main.js` passed after T42 fix.
+- Extracted script blocks from `prospect.html`, `setup.html`, `chat.html`, and `mascot.html` compiled with `vm.Script`.
+- Regression harnesses run and passed: `t33-chat-harness.js`, `t37-send-harness.js`, `t38-todo-harness.js`, `t39-email-harness.js`, `t40-setup-harness.js`, `t40-docs-harness.js`, `t41-call-harness.js`.
+- T46 lead harness final reports:
+  - Default profile run: 10 leads, 10 callable, 10 vertical/confidence/why-now.
+  - Repeat-regeneration run after deleting cache: 10 leads, 0 overlap with the prior run.
+  - Tech / SaaS / IT swap run: 8 callable leads, verticals `healthcare & life sciences` and `financial services & insurance`.
+- Real relaunch/process check: launched from `/Users/alenatipton/BOOLA`; observed one main Electron app process plus normal helper processes. Single-instance lock remains in place.
+
+### T48 prerequisites surfaced during T42 QA
+- `main.js` still has default NYC customer/news/geo data at lines 17-40 and NYC OpenData/WARN constants/handlers around lines 558-687.
+- `main.js` still has NYC-specific address/phone/validator assumptions around lines 718-769 and 986-1053.
+- `prospect.html` still has default NYC profile/news/geo data around lines 369-393, `KNOWN_COMPANIES` around lines 500-513, NYC filler/broad keywords around lines 519 and 591-600, and NYC-only news/hot-tip logic around lines 664-787.
+- `setup.html` still defaults `region.code` to `nyc` on save when no existing code is present around line 328.
+- These were documented only. They were not fixed because full regionalization is T48 and explicitly out of Update 5 scope.
+
 ## 2026-05-19T00:00:00-05:00 - T40 document templates with screenshot-based fill
 
 ### Implemented
