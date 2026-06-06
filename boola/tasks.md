@@ -807,6 +807,195 @@ _(Added after Update 5 landed. Goal: let every rep make Boola theirs — own ema
 
   Sync ai-notes git commit.
 
+## Update 7 — Personality + Workflow Pass (2026-06-06)
+
+_(Goal: make Boola feel like a coworker rep would miss. Funny mascot reactions on real actions, sharper reminder UX, inbox triage, exportable call lists. Builds on Update 6 — should ship after T50-T54 land.)_
+
+- [ ] [claude→codex] **T55: Funny mascot animations + speech bubbles (action-triggered only).**
+  Boola gets a personality layer that fires on real user actions — NEVER on idle timers (the "Mascot is the product" rule in claude-notes.md bans idle animations).
+
+  **Triggers (and their canonical emote + bubble category):**
+  | User action | Mascot emote | Bubble category |
+  |---|---|---|
+  | Email Send succeeds | `cooking-money` for 2s → `happy` | `sent_email` |
+  | Cold email send (first contact) | `excited` for 2s → `happy` | `cold_first_contact` |
+  | Todo marked done | `celebrating` for 2s → `happy` | `task_complete` |
+  | Generate Leads completes (≥8 callable) | `excited` + sparkles | `leads_loaded` |
+  | Won email type sent | `cooking-money` for 4s + rain-money | `deal_won` |
+  | Lead added to call list | `focused` for 1.5s → `happy` | `call_list_add` |
+  | Call Mode start | `thinking-headset` (stays during call) | `call_start` |
+  | Call Mode end | `decision` for 4s → `happy` | `call_end` |
+  | Hit 5+ todos done in a day | `cool` for 3s | `streak_5_todos` |
+  | 9:30 AM prospect fire | existing celebrate behavior + bubble | `morning_greeting` |
+  | App relaunch / wake from sleep | `tired` for 1s → `happy` + bubble (only first time per day) | `welcome_back` |
+
+  **Frequency dampening:** to avoid bubble fatigue, fire bubbles with **1-in-2 probability per qualifying event**. Always fire the emote. The bubble is the cherry on top — should feel like Boola is sometimes commenting, sometimes silent. Track in `app-state.json` so the rate persists across launches.
+
+  **Speech bubble component** (`lib/speech-bubble.js`, new module — packageable):
+  - Floating absolutely-positioned `<div>` above the mascot window
+  - Tail pointing toward mascot
+  - Fade in 200ms, hold 3 seconds, fade out 400ms
+  - Style: rounded white card with soft shadow, dark text, max 3 lines
+  - Stacks if multiple bubbles fire in succession (max 2 visible, newer pushes older out)
+  - Click bubble to dismiss early
+
+  **Content library** lives at `~/BOOLA/personality.md` (Claude is writing this now — Codex consumes it during implementation). Each category has 10-20 quips. Boola loads the file at startup, parses into a map keyed by category, picks a random quip when a bubble fires.
+
+  **API:**
+  - `mascotWindow.webContents.send('speech-bubble', { category: 'sent_email' })` from main.js
+  - mascot.html reads the bubble, picks a random quip from the loaded library, renders the bubble
+
+  **Files affected:**
+  - `lib/speech-bubble.js` (new)
+  - `mascot.html` — add bubble container + IPC listener + load personality.md on init
+  - `main.js` — fire `speech-bubble` IPC at trigger points (after appendSentEmailLedger, after toggle-todo done, after leads-ready, etc.)
+  - `personality.md` (new content file at BOOLA root)
+
+  **Acceptance:**
+  - Send a real email → mascot fires cooking-money emote + ~50% of the time a bubble appears like "💸 Filled the truck."
+  - Mark a todo done → celebrating emote + ~50% chance of "One down. Who's next?"
+  - Win-type email send → 4s cooking-money + sparkles + bubble like "🍾 That's how it's done."
+  - 30 minutes of idle laptop → no random bubbles fire (idle rule preserved)
+  - Bubbles never repeat the same quip twice in a row within a category (track last-fired quip per category in-memory)
+
+- [ ] [claude→codex] **T56: Replace legacy mascot in reminder popup with canonical emote system.**
+  `reminder.html` currently shows the old SVG mascot or a legacy emote token (audit at impl time). Replace with the canonical 13-emote PNG system used everywhere else.
+
+  **Change:**
+  - `reminder.html` mascot element → use `./mascot-emotes/excited.png` as default for reminder fires
+  - On render, listen for the `set-expression` IPC the way mascot.html does (use the same fallback rules from claude-notes.md if the emote PNG isn't present)
+  - If reminder is "morning" (10am) → use `excited`. Afternoon (1pm) → `focused`. Evening (3pm) → `cool`.
+
+  **Acceptance:**
+  - Fire a manual reminder (`fireReminder()` test) → mascot shown is canonical PNG, not legacy
+  - Reminders at 10/13/15 show different emotes per the table above
+  - Missing PNG falls back to `happy.png` with one console log line, not silent failure
+
+- [ ] [claude→codex] **T57: Re-add `gmail.readonly` scope + OAuth re-auth flow.**
+  Email triage (T58) needs inbox read access. Path A1 dropped `mail.google.com` in favor of `gmail.send` — adding `gmail.readonly` alongside keeps verification on the "sensitive scope" track (no CASA audit needed).
+
+  **Code changes:**
+  - `scripts/connect-gmail.js` SCOPES → `['gmail.send', 'gmail.readonly', 'userinfo.email']`
+  - Update the comment block explaining why we're back to two send + read scopes
+  - Boola's `send-email` IPC path is unchanged (already uses Gmail API send, no SMTP)
+  - In main.js, add new IPC handlers `gmail-search` and `gmail-read` (they already exist as stubs from chat.html — wire them through to `gmail.users.messages.list` and `gmail.users.messages.get` via the existing oauth2Client)
+
+  **User-side steps Boola must guide:**
+  - In Settings → Integrations, add a "Email triage" status row. If readonly scope missing, show: "📥 Inbox triage offline. [Re-authorize Gmail]"
+  - Clicking that button: opens a modal explaining the steps (add gmail.readonly to consent screen, revoke at myaccount.google.com/permissions, re-run connect-gmail.js)
+  - After re-auth, status row shows "📥 Inbox triage active. Reading messages from alenatipton111@gmail.com"
+
+  **Acceptance:**
+  - Run connect-gmail.js with new scope list → tokens include readonly
+  - `gmail-search` IPC returns real messages from authorized inbox
+  - `gmail-read` returns full body of a specific message
+  - Send still works (no regression)
+
+- [ ] [claude→codex] **T58: Email triage feature.**
+  When the rep asks Boola about their inbox in chat, Boola can actually search + read messages (now that T57 unlocked it).
+
+  **Re-enable existing chat.html tools:**
+  - The `search_gmail` and `read_email` tool definitions at chat.html lines ~682-700 already exist
+  - They've been silently returning errors since Path A1
+  - With T57 done, they Just Work — no chat.html code change needed beyond removing the "// dormant" comments if added
+  - Verify `callClaude` includes them when `disableGmailTools: false` (default for chat tab)
+
+  **New triage panel** in the chat tab:
+  - Add "📥 Triage Inbox" quick-action button at top of chat
+  - Click → calls Claude with prompt: "Use search_gmail to find emails from the last 7 days. Categorize: needs reply / FYI / spam-ish. List the top 5 that need a reply with sender, subject, and a 1-sentence summary."
+  - Renders the result as a card list with [Open in Gmail] / [Draft reply with Boola] buttons per item
+  - "Draft reply with Boola" pre-fills the Email pane with the original message context and `aftercall` email type as default
+
+  **Acceptance:**
+  - Click 📥 Triage Inbox → returns a real list of recent unreplied messages within ~10 seconds
+  - Each item has a working [Open in Gmail] link
+  - "Draft reply with Boola" opens email pane with context pre-filled
+
+- [ ] [claude→codex] **T59: Call List feature — dedicated tab + add-to-list button + status tracking.**
+  Reps build a daily call list from generated leads (or any leads), work through it, mark called/not-reached/connected, and track outcomes.
+
+  **Schema** (`~/Library/Application Support/boola/call-lists.json` — userData per scalability rule):
+  ```js
+  {
+    callLists: [
+      {
+        id: 'cl-{timestamp}',
+        name: 'Mon 6/9 outreach',
+        createdAt: '...',
+        items: [
+          {
+            leadId: '...',
+            name: '...', company: '...', phone: '...', address: '...',
+            vertical: '...', confidence: 92,
+            status: 'pending' | 'called' | 'no_answer' | 'connected' | 'not_interested' | 'callback_scheduled',
+            calledAt: '',
+            outcomeNotes: '',
+            callbackDate: ''
+          }
+        ]
+      }
+    ]
+  }
+  ```
+
+  **New "Call List" tab** in chat strip (between Tasks and Documents):
+  - List of all call lists (most recent at top)
+  - Each list shows: name, item count, called/pending breakdown, [Open] [Export CSV] [Delete]
+  - Click [Open] → expands to show items
+  - Each item row: name + company + phone + vertical chip + status pill + [📞 Call] [✏️ Status] [🗑️ Remove]
+  - [📞 Call] = `<a href="tel:+15551234567">` — opens default phone app (FaceTime/system phone)
+  - [✏️ Status] = inline dropdown to change status; setting `connected` or `not_interested` adds an outcome notes field
+  - Status counter at top: "12 called / 18 pending / 3 connected"
+
+  **Add to list — two entry points:**
+  1. On each Lead card, add a "📋 Add to call list" button. Click → modal asks "Which call list?" (existing lists + "+ New list"). Adds the lead. Mascot fires `focused` emote per T55.
+  2. On the Leads tab toolbar, add a "📋 Make call list from these" bulk button. Click → checkbox mode on every lead → "Add 7 selected to list" button → modal.
+
+  **Acceptance:**
+  - Click "Make call list from these" → select 5 leads → save as "Tuesday morning" → list appears in Call List tab
+  - Click 📞 Call on an item → system phone app opens with the number pre-dialed
+  - Change status to "no answer" → status pill updates, counter updates
+  - Persist across relaunch
+
+- [ ] [claude→codex] **T60: Call list CSV export (compatible with Sheets / Excel / Numbers).**
+  Per-call-list "Export CSV" button generates a `.csv` file with columns the rep can open in any spreadsheet tool.
+
+  **CSV columns:**
+  ```
+  Company, Contact Name, Phone, Email, Address, Vertical, Confidence,
+  Status, Called At, Outcome Notes, Callback Date, Lead Source, Why Now
+  ```
+
+  **Implementation:**
+  - New `lib/csv-export.js` module — pure CSV generation, no external deps. Handles escaping (quotes, commas, newlines) per RFC 4180.
+  - IPC `call-list-export` in main.js → builds CSV string, writes to `~/Desktop/Boola - {ListName} - {YYYY-MM-DD}.csv` (matches T54 Desktop save pattern)
+  - On success → toast: "📄 Saved to Desktop: Boola - Tuesday morning - 2026-06-09.csv [Open]"
+
+  **Why CSV not Sheets API:**
+  - CSV opens in Sheets, Excel, Numbers, Airtable, anything — no integration overhead
+  - Sheets API would require new OAuth scope + verification path
+  - User drags CSV into Sheets → done. ~5 seconds vs hours of integration code.
+
+  **Acceptance:**
+  - Click Export CSV on a list → file lands at ~/Desktop with correct name format
+  - Open the file in Google Sheets → all columns parse correctly, no quote-escaping bugs even with commas/newlines in notes fields
+  - Open in Numbers → same
+
+- [ ] [claude→codex] **T61: Full QA pass for Update 7.**
+  Same shape as T42/T53. Cold install, exercise every new feature end-to-end, document findings in codex-notes.md.
+
+  Key scenarios:
+  1. Send 5 emails → ~2-3 bubbles appear (50% rate), each from `sent_email` category, no repeats in a row
+  2. Mark 5 todos done in a row → 5th one triggers `streak_5_todos` `cool` emote
+  3. Sit idle for 30 min → no bubbles, no random animations
+  4. Trigger 10/13/15 reminder → canonical emote appears, not legacy mascot
+  5. Run T57 OAuth re-auth → readonly scope present, search_gmail returns real results
+  6. Click 📥 Triage Inbox → real inbox summary appears
+  7. Build a call list, mark statuses, export CSV → file opens cleanly in Sheets
+  8. Click 📞 Call on a list item → system phone dialer opens with number
+
+  Sync to ~/BOOLA/ (no-op), push ai-notes commit.
+
 - [ ] [claude→codex] **T53: Full QA pass for Update 6.**
   After T50-T52 land, run the same kind of end-to-end smoke test as T42:
 
