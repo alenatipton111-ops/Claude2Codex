@@ -590,6 +590,159 @@ _(Added 2026-05-12 — replaces DDG-based vertical search which produces 0 resul
 
 - [x] [claude→codex] **T20: Sync to project folder** — _obsolete as of 2026-05-18: canonical folder is now `~/BOOLA/`, no separate sync step._
 
+## Update 6 — Rep Customization Pass (2026-06-06)
+
+_(Added after Update 5 landed. Goal: let every rep make Boola theirs — own email templates, own UI layout, own button choices — with zero code changes. Universal-SaaS compliant: works for any customer's preferences, persisted to `profile.json` so customization survives reinstall and follows the rep.)_
+
+**Why this is one package, not many small updates:** the rep-customization vision needs the storage schema, settings UI, and the per-tab edit affordances to ship together — partial rollout is confusing UX. Build all of T50-T53, QA as a unit, ship once.
+
+- [ ] [claude→codex] **T50: Custom email types — create, label, save, edit, delete.**
+  Reps create their own email templates beyond the built-in 7 (cold, followup1, followup2, social-proof, in-area, breakup, aftercall, won). Each rep's templates live in `profile.json` under `customEmailTypes` and survive reinstall.
+
+  **Schema** (`profile.json` → `customEmailTypes`):
+  ```js
+  customEmailTypes: [
+    {
+      id: 'cet-1717689600000-abc',     // unique, generated at create time
+      label: 'Quick Pic Quote',         // shown in dropdown as "★ Quick Pic Quote"
+      systemPrompt: 'You write...',     // the guidance / template body
+      allowVariance: true,              // see modes below
+      followUpDays: 2,                   // for T37 auto-task cadence; default 3
+      createdAt: '2026-06-06T...',
+      lastEditedAt: '2026-06-06T...'
+    }
+  ]
+  ```
+
+  **Two modes — toggle on create:**
+  1. **`allowVariance: true` (default)** — the `systemPrompt` field becomes Claude's guidance. Claude adapts wording per-lead using context (lead name, company, address, vertical, etc.). Best for tactics that need personalization.
+  2. **`allowVariance: false`** — the `systemPrompt` field is treated as a literal template with `{{placeholder}}` tokens. Boola fills placeholders from lead + profile data and outputs verbatim. NO AI rewriting. Best for high-volume reps who have a script that works and don't want it altered.
+
+  **Placeholder support (allowVariance: false mode)** — same token set as T40 document templates:
+  - `{{lead_name}}`, `{{lead_company}}`, `{{lead_address}}`, `{{lead_phone}}`, `{{lead_vertical}}`
+  - `{{rep_name}}`, `{{rep_email}}`, `{{rep_phone}}`, `{{rep_company}}`, `{{rep_title}}`
+  - `{{job_address}}` (editable in fill dialog), `{{discount}}`, `{{date}}`, `{{week_days}}` (e.g. "Monday through Thursday")
+  - Any unknown `{{xyz}}` token prompts the user at fill time.
+
+  **UI — Email pane:**
+  - Add `+ New Type` button next to the Email Type dropdown.
+  - Click opens a modal:
+    - Label (text, required, max 30 chars)
+    - Template body (textarea, required)
+    - Toggle: "Allow Boola to adapt this for each lead?" (default ON) — label changes to "Boola adapts wording per lead" / "Send exactly this template (placeholders only)"
+    - Number input: "Follow-up task in N days after send" (default 3)
+    - Live preview pane on the right showing how the type renders against the currently-selected lead (pulls real lead context, shows what placeholders would resolve to)
+    - Save / Cancel
+  - On save: appends to `customEmailTypes`, dropdown re-renders, new type is auto-selected.
+  - Dropdown rendering: built-in types in one group, custom types prefixed with `★` in a second group separator.
+  - Each custom type in dropdown gets an inline `✏️` icon (visible on hover) that re-opens the modal in edit mode.
+  - Delete affordance lives in the edit modal (with a confirm dialog).
+
+  **Send path (`generateEmail` in `chat.html`):**
+  - If selected emailType key starts with `cet-`, look up the custom type in `profile.customEmailTypes`.
+  - If `allowVariance: true` → use the custom type's `systemPrompt` as the email-type guidance block, call `callClaude(getEmailExpertSystem(), prompt, [], false, true)` — same flow as built-in types.
+  - If `allowVariance: false` → skip the Claude call entirely. Run the template body through `fillPlaceholders(template, leadCtx, profileCtx)`. Parse the result with the existing `parseEmailDraft()`. Render directly.
+  - Either way, T37 auto-task creation uses the custom type's `followUpDays`.
+
+  **Migration:** existing profiles with no `customEmailTypes` field treat it as `[]`. No breaking changes.
+
+  **Acceptance:**
+  - Create a custom type "Quick Pic Quote" with allowVariance:false using Alena's exact gold-standard copy as the template body. Send against any lead → email body matches verbatim except placeholders filled.
+  - Create a second type "Holiday Push" with allowVariance:true and a 1-paragraph guidance. Send against two different leads → wording differs but both follow the spirit.
+  - Edit the label of a custom type → dropdown updates immediately.
+  - Delete a custom type → it disappears from dropdown, profile.json no longer contains it.
+  - Restart Boola → custom types persist.
+
+- [ ] [claude→codex] **T51: UI Layout Editor — tabs + action buttons (iPhone-style edit mode).**
+  Reps choose which tabs to show in the chat strip, in what order, and which action buttons within each tab to show. All persisted to `profile.json` under `uiLayout`. Hidden items aren't deleted — they sit behind a "..." overflow menu so the rep can re-enable later.
+
+  **Schema** (`profile.json` → `uiLayout`):
+  ```js
+  uiLayout: {
+    tabs: ['leads', 'chat', 'tasks', 'documents', 'email', 'calls'],  // ordered, visible
+    hiddenTabs: [],                                                     // moved-out, not deleted
+    actionButtons: {                                                    // per-context button order
+      leadCard:   ['cold-email', 'in-area', 'linkedin', 'zoominfo'],
+      emailType:  ['cold', 'followup1', 'followup2', 'in-area', 'aftercall', 'won', 'breakup', 'social-proof'],
+      // ... extensible per surface
+    },
+    hiddenButtons: { leadCard: [], emailType: [], ... }
+  }
+  ```
+
+  **Edit mode UX (iPhone home-screen analogy):**
+  - In **Settings → Layout** there's a big `✏️ Edit Layout` button.
+  - Click → top of the screen overlays an edit-mode banner: "Drag to reorder. Tap × to hide. Tap + to restore."
+  - All tab chips become draggable (long-press or click+hold on desktop). Each gets a small `×` in the top-right corner.
+  - Same affordance applies to button rows inside the Leads tab (per-card action buttons) and the Email Type dropdown (re-shown as a horizontal chip row in edit mode for easier editing).
+  - Hidden items collapse to a `+ Show hidden` strip at the bottom.
+  - `Done` button in the banner exits edit mode and persists changes to `profile.json`.
+
+  **Built-in vs custom:**
+  - Built-in tabs (Chat, Leads, Tasks, Documents, Email, Calls) can be hidden but not deleted (data preservation).
+  - Custom email types (from T50) can be hidden from the dropdown too.
+
+  **Rendering:**
+  - On chat.html load: `renderTabs()` reads `uiLayout.tabs` and renders only those, in that order. If `uiLayout` is missing or empty, fall back to the default tab order.
+  - Same for action button surfaces: each render site consults `uiLayout.actionButtons[contextKey]` for ordering, falls back to the default order if not present.
+  - Hidden items live behind a small `⋯` overflow menu at the end of each strip — clicking it lists hidden items with "Show" buttons. So the rep never gets locked out.
+
+  **Default order (used when `uiLayout` is missing):**
+  - Tabs: `chat, leads, tasks, documents, email, calls`
+  - Lead card actions: `cold-email, in-area, linkedin, zoominfo`
+  - Email types: `cold, followup1, followup2, in-area, aftercall, social-proof, breakup, won`
+
+  **Acceptance:**
+  - Open Settings → Edit Layout. Drag Tasks above Leads → reorder visible immediately. Restart Boola → order persists.
+  - Hide the Calls tab → it disappears from the strip, shows under "⋯" overflow.
+  - Re-show Calls from the overflow → it returns to the end of the strip.
+  - On the Leads tab, hide the LinkedIn button → it disappears from every lead card. Restart → still hidden.
+  - On the Email Type dropdown, hide "Break-Up Email" → no longer in the picker. Re-show → returns.
+  - Wipe `profile.json` `uiLayout` → app falls back to default order cleanly, no errors.
+
+- [ ] [claude→codex] **T52: Settings re-organization (central customization hub).**
+  Settings becomes the rep's one place to make Boola theirs. Currently the wizard mixes one-time setup (sales type, region, rep info) with ongoing config (templates). Restructure into clearly-labeled sections.
+
+  **New Settings layout (top to bottom):**
+  1. **You** — rep_name, rep_email, rep_phone, rep_title, rep_company (T40 fields)
+  2. **Sales setup** — sales type dropdown, target verticals checkboxes, territory radius
+  3. **Email templates** — list of all email types (built-in + custom). Each row: label, "Edit"/"Hide"/"Delete" actions (Delete only on custom). `+ New Type` button at bottom calls T50 modal.
+  4. **Document templates** — existing T40 template list, unchanged behavior
+  5. **Layout** — `✏️ Edit Layout` button → T51 edit mode
+  6. **Mascot** — placeholder for future preferences (idle behavior, etc.) — leave empty for now
+  7. **Integrations** — Gmail OAuth status ("Connected as alenatipton111@gmail.com" / "Connect" button), ZoomInfo status, etc.
+  8. **Advanced** — Anthropic API key field (visible only if `~/.boola_key` is missing), reset settings button
+
+  **Implementation notes:**
+  - Each section collapsible (chevron toggle)
+  - Section anchors so Boola can deep-link ("open Settings → Email templates")
+  - "Save" button at the bottom commits all changes atomically (one `profile.json` write)
+  - "Cancel" reverts unsaved changes
+  - If the user closes Settings with unsaved changes → confirm prompt
+
+  **Acceptance:**
+  - Open Settings → see 8 clearly-labeled sections in order
+  - Each section collapses/expands smoothly
+  - Editing in one section + cancel → no changes persist
+  - Editing in multiple sections + save → all changes persist atomically
+
+- [ ] [claude→codex] **T53: Full QA pass for Update 6.**
+  After T50-T52 land, run the same kind of end-to-end smoke test as T42:
+
+  1. **Cold install** — delete profile.json, relaunch. Walk through setup wizard. Customize layout in edit mode. Restart → all customization persists.
+  2. **Custom type create + send (allowVariance:true)** — write a "Quick Pic Quote" type using Alena's gold-standard copy. Send against a junk-removal lead → email matches expected tone, length ≤5 sentences.
+  3. **Custom type create + send (allowVariance:false)** — same content but allowVariance off. Send against same lead → output is verbatim template with placeholders filled, no AI rewriting.
+  4. **Custom type edit + delete** — modify label, save. Delete custom type, confirm gone from dropdown + profile.json.
+  5. **Tab reorder** — move Tasks to position 1. Restart. Tasks is still position 1.
+  6. **Tab hide + restore** — hide Calls tab. Confirm in "⋯" overflow menu. Restore. Order preserved.
+  7. **Action button hide** — hide LinkedIn button on lead cards. Restart. Still hidden across all leads. Restore.
+  8. **Cross-rep simulation** — switch sales type from junk to "medical_device_sales" → all customization preserved, but EMAIL_TYPE_GUIDE adaptations work for the new vertical (in-area says "rep at hospital across town" instead of "trucks in the area").
+  9. **Bug hunt** — anything that breaks should land in codex-notes.md.
+
+  Mark `[x]` only after each scenario individually passes. No "code complete" — full validation.
+
+  Sync to `~/BOOLA/` (no-op now since canonical = working copy). Push ai-notes git commit.
+
 ## Completed
 
 _(none yet)_
