@@ -762,6 +762,34 @@ _(Added after Update 5 landed. Goal: let every rep make Boola theirs — own ema
   - Internally, normalize to the `{{tokens}}` form before passing to docxtemplater (which only speaks the curly-brace syntax).
   - Document this in the upload modal's helper text: "Use `{{name}}` or `(insert name here)` — both work."
 
+  **E) Lookup-table field type (for discount-driven rate tables):**
+  Real-world templates like Alena's Royal Blue Agreement have a price table where the rep picks a discount level and an entire column of prices auto-populates. Currently T54 would force the rep to fill each rate cell manually. Add a new fieldConfig type:
+
+  ```js
+  fieldConfig: {
+    rates_column: {
+      type: 'lookup',
+      label: 'Discounted rate column',
+      indexBy: 'discount',          // name of the placeholder whose value drives the lookup
+      table: {                       // keyed by indexBy value, list of strings
+        '10% Off': ['$259', '$493', '$709', '$880', '$1,051'],
+        '15% Off': ['$245', '$466', '$670', '$831', '$993'],
+        '20% Off': ['$230', '$438', '$630', '$782', '$934']
+      },
+      outputFormat: 'lines'         // 'lines' = join with newlines for multi-row cell; 'csv' = comma-separated
+    }
+  }
+  ```
+
+  At fill time, if `discount` resolves to "15% Off", `rates_column` fills with the joined string `"$245\n$466\n$670\n$831\n$993"`. Word's table cell renders each on its own line.
+
+  **Configuration UI:**
+  - In the upload field-config wizard, when the user picks "Lookup table" as the type, present a grid editor: column = lookup key (auto-populated from the dropdown values of the `indexBy` field), rows = expandable.
+  - User pastes in values from a spreadsheet, hits Save.
+  - Once configured, the rep never sees the table during fill — only the discount picker. Magic.
+
+  This is template-specific data — lives in `templates.json` per-template. NOT in Boola's source code. Universal-SaaS compliant: every customer can configure their own lookup tables.
+
   **Test template (synthetic, Codex generates during implementation):**
   - Codex creates a generic estimate.docx with these placeholders for testing:
     - `(insert CLIENT_NAME here)` / `(insert COMPANY here)` / `(insert ADDRESS here)` / `(insert JOB_ADDRESS here)`
