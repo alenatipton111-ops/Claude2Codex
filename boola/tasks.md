@@ -726,6 +726,59 @@ _(Added after Update 5 landed. Goal: let every rep make Boola theirs — own ema
   - Editing in one section + cancel → no changes persist
   - Editing in multiple sections + save → all changes persist atomically
 
+- [ ] [claude→codex] **T54: Documents tab upgrades — in-tab upload, Desktop save, screen capture, friendly placeholder syntax.**
+  T40 (Update 5) shipped 90% of the document templates feature. T54 closes the remaining gaps Alena flagged.
+
+  **A) Upload button in Documents tab itself** (currently upload is only in Settings — drives reps out of flow):
+  - In `chat.html` pane-documents at line ~328, add a primary action at the top:
+    ```
+    [📎 Upload Template]  [⚙️ Manage Templates]
+    ```
+  - "📎 Upload Template" opens a file picker (same as Settings flow): drag-drop or click, .docx only.
+  - On upload, run the existing `template-add` IPC → placeholder scan → field-config wizard (existing T40 modal — show inline below the template list, not in setup wizard).
+  - On save, the new template card appears immediately in the list.
+  - "⚙️ Manage Templates" deep-links to Settings → Document templates section (T52's new Settings re-org).
+
+  **B) Filled docs save to ~/Desktop with smart naming** (currently lands in `/var/folders/...` system tmpdir — invisible):
+  - In `main.js`, replace `outputDocxPath(templateId)` (line ~1682) so it returns a path under `app.getPath('desktop')` instead of `os.tmpdir()`.
+  - Filename pattern: `Boola - {TemplateName} - {LeadCompany} - {YYYY-MM-DD}.docx`
+    - Strip illegal characters (`:/\?*"<>|`) to spaces.
+    - If lead is unknown, omit the lead segment.
+    - If a file with the same name exists, suffix `-2`, `-3`, etc.
+  - On successful fill, surface a small toast in chat: "📄 Saved to Desktop: {filename}" with a `[Open]` button (calls existing `template-open-file` IPC).
+  - Keep the `[Send as email attachment]` flow working — that one still uses a buffer in memory, doesn't need the Desktop file.
+
+  **C) Live on-screen capture** (currently only Cmd+V from clipboard works for Screenshot mode):
+  - Add two new buttons in the Screenshot mode panel:
+    - **`📸 Capture region`** — opens an Electron `desktopCapturer` overlay. Screen dims, user drags a rectangle. On release, that region is captured as a PNG, base64-encoded, sent through `extractFromImage()` (existing Claude vision path), fills fields.
+    - **`🖥️ Capture full screen`** — one-click full-display screenshot (using `desktopCapturer.getSources({types:['screen']})`), same downstream path.
+  - The existing "Paste from clipboard (Cmd+V)" affordance stays as a third option.
+  - Implementation note: region selection requires a transparent always-on-top BrowserWindow overlay with a custom canvas selector. New file `lib/screen-region-picker.js` is a clean place. Wire via new IPC `desktop-capture-region` (returns base64 PNG of selected region) and `desktop-capture-full` (returns base64 PNG of primary display).
+  - macOS permission: app must request "Screen Recording" permission via `systemPreferences.askForMediaAccess` or graceful fallback. If denied, show "Boola needs Screen Recording permission in System Settings → Privacy → Screen Recording" and abort.
+
+  **D) Natural-language placeholder syntax** (in addition to `{{name}}`):
+  - Update `template-scan-placeholders` IPC handler in `main.js` (line ~1700) and the renderTemplateDocx fill logic to ALSO accept `(insert NAME here)` style — case-insensitive `(insert ([a-z_]+) here)` regex.
+  - Both formats coexist in the same template; both extract to the same fieldConfig.
+  - Internally, normalize to the `{{tokens}}` form before passing to docxtemplater (which only speaks the curly-brace syntax).
+  - Document this in the upload modal's helper text: "Use `{{name}}` or `(insert name here)` — both work."
+
+  **Test template (synthetic, Codex generates during implementation):**
+  - Codex creates a generic estimate.docx with these placeholders for testing:
+    - `(insert CLIENT_NAME here)` / `(insert COMPANY here)` / `(insert ADDRESS here)` / `(insert JOB_ADDRESS here)`
+    - `{{discount}}` / `{{total}}` / `{{date}}`
+    - One custom field: `{{service_type}}` (dropdown: Standard / Premium / Same-Day)
+  - Mixed syntax intentionally to validate both parsers.
+
+  **Acceptance:**
+  - Click 📎 Upload Template inside Documents tab → file picker → pick the test estimate.docx → scan finds 8 placeholders (4 natural-language, 4 curly-brace). Field-config wizard appears inline. Save.
+  - Open the template → fill mode "Lead data" → placeholders pre-fill. Click Download → file lands at `~/Desktop/Boola - Estimate - {LeadCompany} - {today}.docx`. Open in Word → all placeholders replaced, formatting intact.
+  - Switch to Screenshot mode → click 📸 Capture region → drag a rectangle over a webpage showing prospect details. Boola extracts the fields and fills the form (mocked Claude response acceptable in harness).
+  - Same again with 🖥️ Capture full screen.
+  - Paste image via Cmd+V still works.
+  - Toast appears after each successful download with [Open] button that opens the file in Word.
+
+  Sync ai-notes git commit.
+
 - [ ] [claude→codex] **T53: Full QA pass for Update 6.**
   After T50-T52 land, run the same kind of end-to-end smoke test as T42:
 
