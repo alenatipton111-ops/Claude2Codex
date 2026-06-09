@@ -981,6 +981,34 @@ _(Goal: make Boola feel like a coworker rep would miss. Funny mascot reactions o
   - Open the file in Google Sheets → all columns parse correctly, no quote-escaping bugs even with commas/newlines in notes fields
   - Open in Numbers → same
 
+- [ ] [claude→codex] **T62: Make all popup windows freely draggable + closable.**
+  Current annoyance: when the reminder popup or daily-leads popup or after-call followup popup fires, the user can't reposition it. They're frameless windows with no drag affordance, so if they fire over something you're working on, you have to dismiss to keep working.
+
+  **Affected windows:**
+  - `reminder.html` (todo reminder popup, fires at 10/13/15)
+  - `prospect.html` (daily leads popup, fires at 9:30)
+  - `followup.html` (after-call follow-up popup)
+  - `setup.html` (less of a popup but same issue — gets stuck when opened)
+
+  **Fix per window:**
+
+  1. **Drag handle** — add a top bar in each window's HTML with CSS `-webkit-app-region: drag` so the user can grab anywhere on that bar and move the window. Style it subtly: 28-32px tall, slightly tinted, no border. Within the drag bar, any interactive elements (close button, etc.) get `-webkit-app-region: no-drag` so they still receive clicks.
+
+  2. **Always-visible close button** — top-right of every popup. White `×` icon on a circular subtle background. Hover state. Click → window.close() (or hide for the mascot's case).
+
+  3. **Movability flag** — in `main.js`, ensure each BrowserWindow is created with `movable: true` (likely default but verify). If frameless, the drag handle (above) is what unlocks the move.
+
+  4. **Position persistence (nice-to-have)** — when the user moves a popup, remember its position so the next fire opens at the same spot. Store under `app.getPath('userData')/popup-positions.json` keyed by window type. If the saved position is off-screen (multi-monitor case), fall back to default position.
+
+  5. **Don't break existing animations** — the prospect window's swim-up animation should still work. The drag handle becomes interactive only AFTER the swim animation completes.
+
+  **Acceptance:**
+  - Fire each popup → drag from the top bar → window moves smoothly across screen
+  - Each popup has a visible × close button that works
+  - Move the prospect popup to a new location → close → next 9:30 fire opens at the new location
+  - Multi-monitor: drag popup to second display, close, reopen → reopens on second display
+  - Swim-up animation on the leads popup still plays correctly on first fire
+
 - [ ] [claude→codex] **T61: Full QA pass for Update 7.**
   Same shape as T42/T53. Cold install, exercise every new feature end-to-end, document findings in codex-notes.md.
 
